@@ -92,15 +92,32 @@ def solve_shsvd_single_run(flow_function, jump_rate_function, transition_functio
     return func
 
 
-def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None, custom_evaluation_functions=None):
+def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None, custom_evaluation_functions=None, cef_args=None):
     
     stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order, collect_jump_times, collect_dimension_jump_times)
     
     if custom_evaluation_functions is not None:
         
         if isinstance(custom_evaluation_functions, list):
-            for cef in custom_evaluation_functions:
-                stats.add_custom_evaluation_function(cef)
+            
+            if cef_args is not None:
+                
+                if len(custom_evaluation_functions) != len(cef_args):
+                    raise ValueError('Number of cef functions does not match number of cef arguments')
+                
+                for cef, cef_arg in zip(custom_evaluation_functions, cef_args):
+
+                    if cef_arg is not None:
+                        def cef_with_args(values, fun=cef, args=cef_arg):
+                            return fun(values, *args)
+                        stats.add_custom_evaluation_function(cef_with_args)
+                        
+                    else:
+                        stats.add_custom_evaluation_function(cef)
+                
+            else:
+                for cef in custom_evaluation_functions:
+                    stats.add_custom_evaluation_function(cef)
                 
         else:
             stats.add_custom_evaluation_function(custom_evaluation_functions)
@@ -175,10 +192,10 @@ if __name__ == '__main__':
         return y_new
     
     
-    def ho_energy(values):
+    def ho_energy(values, mass):
         
         squared_values = [np.array(value)**2 for value in values]
-        energy = [1/2*np.sum(value) for value in squared_values]
+        energy = [1/2*mass*np.sum(value) for value in squared_values]
         
         return energy
     
@@ -214,4 +231,4 @@ if __name__ == '__main__':
     #det_oscillator = solve_hsvd(harmonic_oscillator, ho_transition_function_2, y0, t_span, flow_args=(a, b), transition_args=transition_args, jump_times=jump_times)
     
     oscillator = solve_shsvd_single_run(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, flow_args=(a, b), transition_args=transition_args)
-    oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50, custom_evaluation_functions=[ho_energy, ho_first_coordinate])
+    oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50, custom_evaluation_functions=[ho_energy, ho_first_coordinate], cef_args=[(2, ), None])
