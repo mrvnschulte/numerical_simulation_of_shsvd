@@ -1,0 +1,192 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 14 16:15:51 2025
+
+@author: schulte
+"""
+
+from scipy.integrate import solve_ivp
+import numpy as np
+from function_vd import function_of_variable_dimension, stats_functions_of_variable_dimension
+from random import random
+
+def solve_hsvd(flow_function, transition_function, initial_value, t_span, jump_times=None, flow_args=None, transition_args=None):
+    
+    if transition_args is not None:
+        def transition_function(t, y, fun=transition_function):
+            return fun(t, y, *transition_args)
+        
+    t0, end_time = t_span
+    
+    if isinstance(jump_times, (list, np.ndarray)):
+        jump_times = list(jump_times)
+        jump_times.sort()
+        if jump_times[-1] < t0:
+            jump_times = [end_time]
+        else:
+            while jump_times[0] < t0:
+                del jump_times[0]
+        tf = min(end_time, jump_times[0])
+    else:
+        tf = end_time
+        
+    func = function_of_variable_dimension()
+    
+    while tf < end_time:
+    
+        y = solve_ivp(flow_function, (t0, tf), initial_value, args=flow_args)
+        func.add_values(y.t, y.y.T)
+        
+        t0 = tf
+        initial_value = transition_function(y.t[-1], y.y.T[-1])
+        del jump_times[0]
+        if len(jump_times) == 0:
+            tf = end_time
+        else:
+            tf = min(end_time, jump_times[0])
+        
+    y = solve_ivp(flow_function, (t0, tf), initial_value, args=flow_args)
+
+    func.add_values(y.t, y.y.T)
+    
+    return func
+
+
+def solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, jump_times=None, flow_args=None, jump_rate_args=None, transition_args=None):
+    
+    if jump_rate_args is not None:
+        def jump_rate_function(t, y, fun=jump_rate_function):
+            return fun(t, y, *jump_rate_args)
+        
+    if transition_args is not None:
+        def transition_function(t, y, fun=transition_function):
+            return fun(t, y, *transition_args)
+            
+    t0, end_time = t_span
+        
+    func = function_of_variable_dimension()
+    
+    r = random()
+    t = t0 - np.log(r) / jump_rate_bound
+    
+    while t <= end_time:
+    
+        y = solve_ivp(flow_function, (t0, t), initial_value, args=flow_args)
+        func.add_values(y.t, y.y.T)
+        
+        t0 = t
+        
+        s = random()
+        if s <= jump_rate_function(y.t[-1], y.y.T[-1])/jump_rate_bound:
+            initial_value = transition_function(y.t[-1], y.y.T[-1])
+        else:
+            initial_value = y.y.T[-1]
+        
+        r = random()
+        t = t - np.log(r) / jump_rate_bound
+        
+    y = solve_ivp(flow_function, (t0, end_time), initial_value, args=flow_args)
+
+    func.add_values(y.t, y.y.T)
+    
+    return func
+
+
+def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None):
+    
+    stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order, collect_jump_times, collect_dimension_jump_times)
+    
+    for it in range(iterations):
+        func = solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, flow_args=flow_args, jump_rate_args=jump_rate_args, transition_args=transition_args)
+        stats.add_function(func)
+    
+    return stats
+
+
+if __name__ == '__main__':
+    
+    def flow_function(t, y):
+        
+        return -y
+    
+    def harmonic_oscillator(t, y, a, b):
+        
+        if len(y) == 1:
+            dy = [0]
+        elif len(y) == 2:
+            dy = [y[1], -b * y[1] - a * y[0]]
+        else:
+            raise ValueError('Not a possible dimension')
+            
+        return dy
+
+    def jump_rate_function(t, y):
+        
+        norm = np.linalg.norm(np.array(y))
+        
+        prob = min(1, 1/norm)
+        
+        return prob
+    
+    def ho_jump_rate_function(t, y):
+        
+        return np.abs(y[0])#np.linalg.norm(y[0])
+
+    def transition_function(t, y):
+        
+        if len(y) == 2:
+            y_new = [y[0] + y[1]]
+        elif len(y) == 1:
+            y_new = [1/3*y[0], 2/3*y[0]]
+        else:
+            raise ValueError('Not the right dimension')
+        
+        return y_new
+    
+    def ho_transition_function(t, y, a):
+        
+        if len(y) == 1:
+            y_new = [y[0], a]
+        elif len(y) == 2:
+            y_new = [y[0]]
+        else:
+            raise ValueError('Not a possible dimension')
+            
+        return y_new
+    
+    def ho_transition_function_2(t, y, c):
+        
+        if len(y) == 1:
+            y_new = [y[0], c*y[0]]
+        elif len(y) == 2:
+            y_new = [y[0]]
+        else:
+            raise ValueError('Not a possible dimension')
+            
+        return y_new
+    
+    # y0 = np.array([1, 2])
+    # t_span = (0, 10)
+
+    # func_det = solve_hsvd(flow_function, transition_function, y0, t_span)#, jump_times=[-1, 1, 5, 7])
+    # func_det.plot_coordinates('Coordinate plot', True, ['first', 'second'], 'Time', 'Value', True, grid=True, show_jump_times=True, show_dimension_jump_times=True)
+    # func_det.plot_norm(order=[1, 2], title='Norm plot', legend=True, grid=True, show_dimension_jump_times=True)
+    
+    # func_stoch = solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, y0, t_span, 1)#, jump_times=[-1, 1, 5, 7])
+    # func_stoch.plot_coordinates('Coordinate plot', True, ['first', 'second'], 'Time', 'Value', True, grid=True, show_jump_times=True, show_dimension_jump_times=True)
+    # func_stoch.plot_norm(order=[1, 2], title='Norm plot', legend=True, grid=True, show_dimension_jump_times=True)
+    
+    # stats = solve_shsvd(flow_function, jump_rate_function, transition_function, y0, t_span, 1, norm_order=[1, 2], collect_jump_times=True)
+    
+    y0 = [1, 0]
+    t_span = (0, 100)
+    jump_rate_bound = np.linalg.norm(y0, ord=2)
+    a = 1
+    b = 0
+    transition_args = (.1, )
+    jump_times = np.arange(1, 100, 6)
+    
+    #det_oscillator = solve_hsvd(harmonic_oscillator, ho_transition_function_2, y0, t_span, flow_args=(a, b), transition_args=transition_args, jump_times=jump_times)
+    
+    oscillator = solve_shsvd_single_run(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, flow_args=(a, b), transition_args=transition_args)
+    oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50)
