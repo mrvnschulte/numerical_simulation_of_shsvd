@@ -92,9 +92,18 @@ def solve_shsvd_single_run(flow_function, jump_rate_function, transition_functio
     return func
 
 
-def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None):
+def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None, custom_evaluation_functions=None):
     
     stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order, collect_jump_times, collect_dimension_jump_times)
+    
+    if custom_evaluation_functions is not None:
+        
+        if isinstance(custom_evaluation_functions, list):
+            for cef in custom_evaluation_functions:
+                stats.add_custom_evaluation_function(cef)
+                
+        else:
+            stats.add_custom_evaluation_function(custom_evaluation_functions)
     
     for it in range(iterations):
         func = solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, flow_args=flow_args, jump_rate_args=jump_rate_args, transition_args=transition_args)
@@ -165,6 +174,22 @@ if __name__ == '__main__':
             
         return y_new
     
+    
+    def ho_energy(values):
+        
+        squared_values = [np.array(value)**2 for value in values]
+        energy = [1/2*np.sum(value) for value in squared_values]
+        
+        return energy
+    
+    
+    def ho_first_coordinate(values):
+        
+        first_coordinate = [value[0] for value in values]
+        
+        return first_coordinate
+        
+    
     # y0 = np.array([1, 2])
     # t_span = (0, 10)
 
@@ -189,4 +214,4 @@ if __name__ == '__main__':
     #det_oscillator = solve_hsvd(harmonic_oscillator, ho_transition_function_2, y0, t_span, flow_args=(a, b), transition_args=transition_args, jump_times=jump_times)
     
     oscillator = solve_shsvd_single_run(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, flow_args=(a, b), transition_args=transition_args)
-    oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50)
+    oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50, custom_evaluation_functions=[ho_energy, ho_first_coordinate])

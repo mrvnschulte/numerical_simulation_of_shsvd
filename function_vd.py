@@ -575,6 +575,9 @@ class stats_functions_of_variable_dimension():
         self.dimension_means = np.zeros(len(self.times))
         self.dimension_variances = np.zeros(len(self.times))
         self.dimension_m2 = np.zeros(len(self.times))
+        self.cef_means = []
+        self.cef_variances = []
+        self.cef_m2 = []
         
         self.collect_jump_times = collect_jump_times
         if self.collect_jump_times:
@@ -598,7 +601,7 @@ class stats_functions_of_variable_dimension():
         self.evaluated_functions += 1
         
         values = func(self.times)
-        # Update norm means and variances according to Welfords online algorithm
+
         for index, order in enumerate(self.order):
             
             norm_values = np.array([np.linalg.norm(value, ord=order) for value in values])
@@ -621,13 +624,26 @@ class stats_functions_of_variable_dimension():
         self.dimension_means = new_means
         self.dimension_m2 = new_m2
         self.dimension_variances = new_variances
+        
+        # To-Do: Add evaluation of custom evaluation functions
+        for index, evaluation_func in enumerate(self.custom_evaluation_functions):
+            
+            cef_values = np.array(evaluation_func(values))
+            old_means = self.cef_means[index]
+            old_m2 = self.cef_m2[index]
+            
+            new_means, new_variances, new_m2 = self.update_means_and_variances(cef_values, old_means, old_m2)
+            
+            self.cef_means[index] = new_means
+            self.cef_m2[index] = new_m2
+            self.cef_variances[index] = new_variances
+
             
         if self.collect_jump_times:
             self.jump_times.append(func.jump_times())
         if self.collect_dimension_jump_times:
             self.dimension_jump_times.append(func.dimension_jump_times())
         
-        #To-Do: Add evaluation of custom evaluation functions
         
     def update_means_and_variances(self, values, old_means, old_m2):
         
@@ -643,6 +659,7 @@ class stats_functions_of_variable_dimension():
             new_variances = 0
         
         return new_means, new_variances, new_m2
+    
         
     def plot_norm(self, order=2, sigma=2, labels=None, title='Plot of mean norm', legend=True, xlabel='Time', ylabel='Norm', grid=False):
         
@@ -753,8 +770,9 @@ class stats_functions_of_variable_dimension():
             
         self.custom_evaluation_functions.append(func)
         
-        
-            
+        self.cef_means.append(np.zeros(len(self.times)))
+        self.cef_variances.append(np.zeros(len(self.times)))
+        self.cef_m2.append(np.zeros(len(self.times)))
         
     
 
