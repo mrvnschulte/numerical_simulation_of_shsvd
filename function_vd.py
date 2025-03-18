@@ -763,6 +763,33 @@ class stats_functions_of_variable_dimension():
         return fig
     
     
+    def plot_cefs(self, sigma=2, labels=None, title='Plot of cefs', legend=False, xlabel='Time', ylabel='Value', grid=False):
+        
+        fig = plt.figure()
+        
+        lines = []
+        
+        labels = labels or ['Cef {i+1}' for i in range(len(self.custom_evaluation_functions))]
+        
+        for index in range(len(self.custom_evaluation_functions)):
+            line, = plt.plot(self.times, self.cef_means[index])
+            plt.fill_between(self.times, self.cef_means[index]-sigma*self.cef_variances[index], self.cef_means[index]+sigma*self.cef_variances[index], alpha=.3)
+            lines.append(line)
+        
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend(lines, labels)
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
+    
+    
     def add_custom_evaluation_function(self, func):
         
         if self.evaluated_functions > 0:
