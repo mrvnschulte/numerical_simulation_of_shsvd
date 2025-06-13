@@ -555,7 +555,8 @@ class stats_functions_of_variable_dimension():
     def __init__(self, t_span, stepsize, order=2, collect_jump_times=False, collect_dimension_jump_times=False):
         
         t0, tf = t_span
-        self.times = np.arange(t0, tf, stepsize)
+        decimal_places = len(str(stepsize).split('.')[1]) if '.' in str(stepsize) else 0
+        self.times = np.round(np.arange(t0, tf, stepsize), decimal_places)
         
         if not np.isclose(self.times[-1], tf):
             self.times = np.append(self.times, tf)

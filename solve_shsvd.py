@@ -37,7 +37,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
     while tf < end_time:
     
         t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
-        y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial, args=flow_args)
+        y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial,
+                      args=flow_args)
         func.add_values(y.t, y.y.T)
         
         t0 = tf
@@ -49,14 +50,17 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
             tf = min(end_time, jump_times[0])
         
     t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
-    y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial, args=flow_args)
+    y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial,
+                  args=flow_args)
 
     func.add_values(y.t, y.y.T)
     
     return func
 
 
-def solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, jump_times=None, flow_args=None, jump_rate_args=None, transition_args=None):
+def solve_shsvd_single_run(flow_function, jump_rate_function, transition_function,
+                           initial_value, t_span, jump_rate_bound, jump_times=None,
+                           flow_args=None, jump_rate_args=None, transition_args=None):
     
     if jump_rate_args is not None:
         def jump_rate_function(t, y, fun=jump_rate_function):
@@ -96,9 +100,15 @@ def solve_shsvd_single_run(flow_function, jump_rate_function, transition_functio
     return func
 
 
-def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, iterations=500, jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False, collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None, transition_args=None, custom_evaluation_functions=None, cef_args=None):
+def solve_shsvd(flow_function, jump_rate_function, transition_function,
+                initial_value, t_span, jump_rate_bound, iterations=500,
+                jump_times=None, stepsize=1, norm_order=2, collect_jump_times=False,
+                collect_dimension_jump_times=False, flow_args=None, jump_rate_args=None,
+                transition_args=None, custom_evaluation_functions=None, cef_args=None):
     
-    stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order, collect_jump_times, collect_dimension_jump_times)
+    stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order,
+                                                  collect_jump_times,
+                                                  collect_dimension_jump_times)
     
     if custom_evaluation_functions is not None:
         
@@ -107,7 +117,8 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_
             if cef_args is not None:
                 
                 if len(custom_evaluation_functions) != len(cef_args):
-                    raise ValueError('Number of cef functions does not match number of cef arguments')
+                    raise ValueError('''Number of cef functions does not match
+                                     number of cef arguments''')
                 
                 for cef, cef_arg in zip(custom_evaluation_functions, cef_args):
 
@@ -127,7 +138,11 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_
             stats.add_custom_evaluation_function(custom_evaluation_functions)
     
     for it in range(iterations):
-        func = solve_shsvd_single_run(flow_function, jump_rate_function, transition_function, initial_value, t_span, jump_rate_bound, flow_args=flow_args, jump_rate_args=jump_rate_args, transition_args=transition_args)
+        func = solve_shsvd_single_run(flow_function, jump_rate_function,
+                                      transition_function, initial_value, t_span,
+                                      jump_rate_bound, flow_args=flow_args,
+                                      jump_rate_args=jump_rate_args,
+                                      transition_args=transition_args)
         stats.add_function(func)
     
     return stats
