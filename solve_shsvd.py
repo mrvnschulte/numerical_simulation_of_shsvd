@@ -258,3 +258,4 @@ if __name__ == '__main__':
     
     oscillator = solve_shsvd_single_run(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, flow_args=(a, b), transition_args=transition_args)
     oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50, custom_evaluation_functions=[ho_energy, ho_first_coordinate], cef_args=[(2, ), None])
+    oscillator_stats.evaluate_cefs(20)

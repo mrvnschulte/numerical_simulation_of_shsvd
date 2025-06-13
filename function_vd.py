@@ -801,6 +801,77 @@ class stats_functions_of_variable_dimension():
         self.cef_variances.append(np.zeros(len(self.times)))
         self.cef_m2.append(np.zeros(len(self.times)))
         
+        
+    def evaluate_cefs(self, t):
+        
+        value = self.evaluate(t, self.cef_means)
+        
+        return value
+    
+    
+    def evaluate_norm(self, t):
+        
+        value = self.evaluate(t, self.norm_means)
+        
+        return value
+    
+    
+    def evaluate_dimension(self, t):
+        
+        value = self.evaluate(t, self.dimension_means)
+        
+        return value
+    
+    
+    def evaluate_cef_variances(self, t):
+        
+        value = self.evaluate(t, self.cef_variances)
+        
+        return value
+    
+    
+    def evaluate_norm_variance(self, t):
+        
+        value = self.evaluate(t, self.norm_variances)
+        
+        return value
+    
+    
+    def evaluate_dimension_variances(self, t):
+        
+        value = self.evaluate(t, self.dimension_variances)
+        
+        return value
+        
+    
+    def evaluate(self, t, values):
+        
+        if isinstance(t, (list, np.ndarray)):
+            value = []
+            for time in t:
+                value.append(self.interpolate_value(time, values))
+        else:
+            value = self.interpolate_value(t, values)
+        
+        return value
+
+
+    def interpolate_value(self, t, values):
+        
+        if t < self.times[0] or t > self.times[-1]:
+            raise ValueError(f't is not between {self.times[0]} and {self.times[-1]} (first and last value of times)')
+        elif t == self.times[-1]:
+            return np.array(values[:,-1])
+        
+        index_t = bisect.bisect_right(self.times, t)
+        
+        interp_times = np.array(self.times[index_t-1:index_t+1])
+        interp_values = np.array(values).T[index_t-1:index_t+1]
+        
+        value = interp_values[0] + ((t - interp_times[0]) / (interp_times[1] - interp_times[0])) * (interp_values[1] - interp_values[0])
+        
+        return value
+
     
 
 if __name__ == '__main__':
