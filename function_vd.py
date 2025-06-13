@@ -140,7 +140,7 @@ class function_of_variable_dimension():
         #     else:
         #         return self.values[0]
         elif t == self.times[-1]:
-            return self.values[-1]
+            return np.array(self.values[-1])
         
         index_t = bisect.bisect_right(self.times, t)
         
@@ -322,7 +322,7 @@ class function_of_variable_dimension():
         prev_index = 0
         
         if not labels:
-            labels=[f'Coordinate {i}' for i in range(max_dimension)]
+            labels=[f'Coordinate {i+1}' for i in range(max_dimension)]
             
         if separate_plots:
             figures = []
@@ -860,3 +860,14 @@ if __name__ == '__main__':
     stats.plot_dimension(legend=True)
     stats.plot_jump_times(number=[1, 2], legend=True)
     
+    times = [0, 1, 1, 2, 2, 3]
+    values = [[1-0], [1-.666], [1-.666, 1-0], [1-1, 1-.333], [1-.333], [1-1]]
+    
+    func = function_of_variable_dimension(times, values)
+    fig = func.plot_coordinates(show_jump_times=True)
+    plt.figure(fig)
+    plt.axhline(0, color='black')
+    plt.axhline(1, color='black')
+    plt.xlim(0, 2.5)
+    plt.savefig('cadlag_function.png')
+    plt.show()

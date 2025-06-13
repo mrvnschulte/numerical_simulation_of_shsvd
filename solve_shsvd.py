@@ -9,8 +9,10 @@ from scipy.integrate import solve_ivp
 import numpy as np
 from function_vd import function_of_variable_dimension, stats_functions_of_variable_dimension
 from random import random
+import matplotlib.pyplot as plt
 
-def solve_hsvd(flow_function, transition_function, initial_value, t_span, jump_times=None, flow_args=None, transition_args=None):
+def solve_hsvd(flow_function, transition_function, initial_value, t_span,
+               jump_times=None, t_eval=None, flow_args=None, transition_args=None):
     
     if transition_args is not None:
         def transition_function(t, y, fun=transition_function):
@@ -34,7 +36,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span, jump_t
     
     while tf < end_time:
     
-        y = solve_ivp(flow_function, (t0, tf), initial_value, args=flow_args)
+        t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
+        y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial, args=flow_args)
         func.add_values(y.t, y.y.T)
         
         t0 = tf
@@ -45,7 +48,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span, jump_t
         else:
             tf = min(end_time, jump_times[0])
         
-    y = solve_ivp(flow_function, (t0, tf), initial_value, args=flow_args)
+    t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
+    y = solve_ivp(flow_function, (t0, tf), initial_value, t_eval=t_eval_partial, args=flow_args)
 
     func.add_values(y.t, y.y.T)
     
@@ -127,6 +131,20 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function, initial_
         stats.add_function(func)
     
     return stats
+
+def __partial_t_eval__(t_eval, t0, tf):
+    
+    t_eval_partial = t_eval[(t_eval >= t0) & (t_eval <= tf)].tolist()
+    
+    if t0 not in t_eval_partial:
+        t_eval_partial.insert(0, t0)
+        
+    if tf not in t_eval_partial:
+        t_eval_partial.append(tf)
+        
+    t_eval_partial = np.array(t_eval_partial)
+
+    return t_eval_partial
 
 
 if __name__ == '__main__':
@@ -220,15 +238,23 @@ if __name__ == '__main__':
     
     # stats = solve_shsvd(flow_function, jump_rate_function, transition_function, y0, t_span, 1, norm_order=[1, 2], collect_jump_times=True)
     
+    t_end = 100
     y0 = [1, 0]
-    t_span = (0, 100)
+    t_span = (0, t_end)
     jump_rate_bound = np.linalg.norm(y0, ord=2)
     a = 1
     b = 0
-    transition_args = (.1, )
-    jump_times = np.arange(1, 100, 6)
+    transition_args = (-.3, )
+    jump_times = np.arange(8.5, 100, 8.5)
+    t_eval = np.linspace(0, t_end, t_end+1)
     
-    #det_oscillator = solve_hsvd(harmonic_oscillator, ho_transition_function_2, y0, t_span, flow_args=(a, b), transition_args=transition_args, jump_times=jump_times)
+    # det_oscillator = solve_hsvd(harmonic_oscillator, ho_transition_function_2, y0, t_span, flow_args=(a, b), transition_args=transition_args, jump_times=jump_times, t_eval=t_eval)
+    # fig = det_oscillator.plot_coordinates()
+    
+    # plt.figure(fig)
+    # plt.grid()
+    # plt.tight_layout()
+    # plt.savefig('Harmonic_oscillator_hold_and_push.png')
     
     oscillator = solve_shsvd_single_run(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, flow_args=(a, b), transition_args=transition_args)
     oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function, ho_transition_function_2, y0, t_span, jump_rate_bound, norm_order=[1, 2], collect_jump_times=True, flow_args=(a, b), transition_args=transition_args, iterations=50, custom_evaluation_functions=[ho_energy, ho_first_coordinate], cef_args=[(2, ), None])
