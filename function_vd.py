@@ -25,7 +25,8 @@ class function_of_variable_dimension():
             values = self.convert_to_list(values)
             
             # Check if initialisation is meaningful
-            if not (isinstance(times, (list, np.ndarray)) and isinstance(values, (list, np.ndarray))):
+            if not (isinstance(times, (list, np.ndarray)) and
+                    isinstance(values, (list, np.ndarray))):
                 raise ValueError('Times and/or values are not array-like')
             if not (len(times) == len(values)):
                 raise ValueError('Times and values are not of same length')
@@ -34,9 +35,11 @@ class function_of_variable_dimension():
                 if (isinstance(values[index], (list, np.ndarray))):
                     continue
                 else:
-                    raise ValueError(f'{value} in values is not array-like nor can it be converted')
+                    raise ValueError(f'''{value} in values is not array-like \
+                                     nor can it be converted''')
             
-            times, values = self.delete_double_values(times, values, initialisation=True)
+            times, values = self.delete_double_values(times, values,
+                                                      initialisation=True)
             
             self.times = times
             self.values = values
@@ -60,7 +63,8 @@ class function_of_variable_dimension():
     
     def convert_to_list(self, number):
         
-        if (isinstance(number, (int, float, np.float16, np.float32, np.float64))):
+        if (isinstance(number, (int, float, np.float16, np.float32,
+                                np.float64))):
             number = [number]
         elif (isinstance(number, np.ndarray)):
             number = list(number)
@@ -522,7 +526,10 @@ class function_of_variable_dimension():
         if not isinstance(other, function_of_variable_dimension):
             raise TypeError(f'{other} is not a function of variable dimension')
         
-        if self.times[-1] == other.times[0]:
+        if len(self.times) == 0:
+            func = other
+            
+        elif self.times[-1] == other.times[0]:
             func = function_of_variable_dimension(self.times + other.times, self.values + other.values)
         
         elif self.times[-1] < other.times[0]:
