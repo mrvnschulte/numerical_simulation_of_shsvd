@@ -158,10 +158,17 @@ class function_of_variable_dimension():
     
     def add_values(self, times, values):
         
+        if isinstance(times, (int, float, np.float16, np.float32, np.float64)):
+            single_value = True
+        else:
+            single_value = False
         times = self.convert_to_list(times)
         values = self.convert_to_list(values)
-        for index, value in enumerate(values):
-            values[index] = self.convert_to_list(value)
+        if not single_value:
+            for index, value in enumerate(values):
+                values[index] = self.convert_to_list(value)
+        else:
+            values = [values]
             
         times, values = self.delete_double_values(times, values)
         
