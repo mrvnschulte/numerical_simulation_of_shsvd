@@ -183,8 +183,8 @@ class function_of_variable_dimension():
     def delete_values(self, times=None, values=None, indices=None):
         
         if times == None and values == None and indices == None:
-            del times[-1]
-            del values[-1]
+            del self.times[-1]
+            del self.values[-1]
             
         elif times in self.times:
             
@@ -536,11 +536,14 @@ class function_of_variable_dimension():
         if len(self.times) == 0:
             func = other
             
+        elif len(other.times) == 0:
+            func = self
+            
         elif self.times[-1] == other.times[0]:
             func = function_of_variable_dimension(self.times + other.times, self.values + other.values)
         
         elif self.times[-1] < other.times[0]:
-            if self.dimension[-1] != other.dimension[0]:
+            if self.dimension(self.times[-1]) != other.dimension(other.times[0]) and not other.times[0] in other.jump_times():
                 raise ValueError('Dimensions of function do not coincide (only possible when last time for first function and first time for second function are the same)')
                 
             func = function_of_variable_dimension(self.times + other.times, self.values + other.values)
