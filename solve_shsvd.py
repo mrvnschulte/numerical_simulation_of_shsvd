@@ -11,6 +11,7 @@ from function_vd import (function_of_variable_dimension,
                          stats_functions_of_variable_dimension)
 from random import random
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 def solve_hsvd(flow_function, transition_function, initial_value, t_span,
                jump_times=None, jump_set_function=None,
@@ -198,6 +199,8 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
 
 def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 initial_value, t_span, jump_rate_bound, iterations=500,
+                tol=1e-5, min_iterations=10, max_iterations=1000,
+                convergence_estimate=None,
                 jump_times=None, jump_time_transition_function=None,
                 jump_set_function=None, jump_set_transition_function=None, 
                 custom_evaluation_functions=None, stepsize=1, t_eval=None,
@@ -223,8 +226,8 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
             if cef_args is not None:
                 
                 if len(custom_evaluation_functions) != len(cef_args):
-                    raise ValueError('''Number of cef functions does not match
-                                     number of cef arguments''')
+                    raise ValueError('Number of cef functions does not match '
+                                     'number of cef arguments')
                 
                 for cef, cef_arg in zip(custom_evaluation_functions, cef_args):
 
@@ -243,7 +246,54 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
         else:
             stats.add_custom_evaluation_function(custom_evaluation_functions)
     
+    if convergence_estimate is not None:
+        
+        min_iterations = max(min_iterations, 2)
+        iterations = max_iterations
+        
+        if not isinstance(convergence_estimate, tuple):
+            if not convergence_estimate.lower() == 'dimension':
+                raise ValueError("Convergence estimate has to be a tuple "
+                                 "consisting of the keyword 'norm' plus its "
+                                 "order, the keyword 'cef' plus its position "
+                                 "or be equal to the keyword 'dimension'")
+            else:
+                convergence_estimate = ('dimension', -1)
+                
+        else:
+            if not (convergence_estimate[0].lower() == 'norm'
+                    or convergence_estimate[0].lower() == 'cef'):
+                raise ValueError("Convergence estimate has to be a tuple "
+                                 "consisting of the keyword 'norm' plus its "
+                                 "order, the keyword 'cef' plus its position "
+                                 "or be equal to the keyword 'dimension'")
+                
+            elif convergence_estimate[0].lower() == 'norm':
+                if not convergence_estimate[1] in stats.order:
+                    raise ValueError("Norm of order "
+                                     f"{convergence_estimate[1]} is not "
+                                     "stored and hence cannot be evaluated. "
+                                     "Please provide it to norm_order.")
+                else:
+                    index = stats.order.index(convergence_estimate[1])
+                    convergence_estimate = (convergence_estimate[0], index)
+
+            elif (convergence_estimate[0].lower() == 'cef'
+                  and convergence_estimate[1] > len(stats.cef_means)):
+                raise ValueError(f"Only {len(stats.cef_means)} custom "
+                                 "evaluation functions have been provided, "
+                                 f"position {convergence_estimate[1]} cannot "
+                                 "be accessed.")
+        
     for it in range(iterations):
+        if convergence_estimate is not None and it>=min_iterations:
+            old_convergence_values = deepcopy(getattr(stats,
+                                             convergence_estimate[0]
+                                             + '_means'))
+            if convergence_estimate[1] >= 0:
+                old_convergence_values = old_convergence_values[
+                    convergence_estimate[1]]
+            
         func = solve_shsvd_single_run(flow_function, jump_rate_function,
                                       transition_function, initial_value,
                                       t_span, jump_rate_bound,
@@ -262,8 +312,25 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       jump_set_transition_args=
                                       jump_set_transition_args)
         stats.add_function(func)
-    
+        if convergence_estimate is not None and it>=min_iterations:
+            new_convergence_values = getattr(stats,
+                                             convergence_estimate[0]
+                                             + '_means')
+            if convergence_estimate[1] >= 0:
+                new_convergence_values = new_convergence_values[
+                    convergence_estimate[1]]
+                
+            old_convergence_values = np.array(old_convergence_values)
+            new_convergence_values = np.array(new_convergence_values)
+            
+            max_difference = max(abs(old_convergence_values
+                                     - new_convergence_values))
+            
+            if max_difference < tol:
+                break
+
     return stats
+
 
 def __partial_t_eval__(t_eval, t0, tf):
     
@@ -432,5 +499,7 @@ if __name__ == '__main__':
                                    iterations=50,
                                    custom_evaluation_functions=[ho_energy,
                                                                 ho_first_coordinate],
-                                   cef_args=[(2, ), None])
+                                   cef_args=[(2, ), None],
+                                   convergence_estimate=('cef', 0),
+                                   max_iterations=500, tol=1e-3)
     oscillator_stats.plot_norm()
