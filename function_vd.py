@@ -569,11 +569,14 @@ class function_of_variable_dimension():
     
 class stats_functions_of_variable_dimension():
     
-    def __init__(self, t_span, stepsize, order=2, collect_jump_times=False, collect_dimension_jump_times=False):
+    def __init__(self, t_span, stepsize=1, t_eval=None, order=2, collect_jump_times=False, collect_dimension_jump_times=False):
         
         t0, tf = t_span
         decimal_places = len(str(stepsize).split('.')[1]) if '.' in str(stepsize) else 0
-        self.times = np.round(np.arange(t0, tf, stepsize), decimal_places)
+        if t_eval is not None:
+            self.times = self.__partial_t_eval__(t_eval, t0, tf)
+        else:
+            self.times = np.round(np.arange(t0, tf, stepsize), decimal_places)
         
         if not np.isclose(self.times[-1], tf):
             self.times = np.append(self.times, tf)
@@ -890,7 +893,25 @@ class stats_functions_of_variable_dimension():
         
         return value
 
-    
+    @staticmethod
+    def __partial_t_eval__(t_eval, t0, tf):
+        
+        if t_eval is None:
+            return None
+        
+        t_eval = np.array(t_eval)
+        t_eval_partial = t_eval[(t_eval >= t0) & (t_eval <= tf)].tolist()
+        
+        if t0 not in t_eval_partial:
+            t_eval_partial.insert(0, t0)
+            
+        if tf not in t_eval_partial:
+            t_eval_partial.append(tf)
+            
+        t_eval_partial = np.array(t_eval_partial)
+
+        return t_eval_partial
+
 
 if __name__ == '__main__':
     times = [0, 1, 1, 2, 2, 4]

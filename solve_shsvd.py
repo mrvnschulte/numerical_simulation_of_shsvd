@@ -200,16 +200,20 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 initial_value, t_span, jump_rate_bound, iterations=500,
                 jump_times=None, jump_time_transition_function=None,
                 jump_set_function=None, jump_set_transition_function=None, 
-                custom_evaluation_functions=None, stepsize=1, norm_order=2,
-                collect_jump_times=False,
+                custom_evaluation_functions=None, stepsize=1, t_eval=None,
+                norm_order=2, collect_jump_times=False,
                 collect_dimension_jump_times=False, flow_args=None,
                 jump_rate_args=None, transition_args=None,
                 jump_time_transition_args=None, jump_set_args=None,
                 jump_set_transition_args=None, 
                 cef_args=None):
     
-    stats = stats_functions_of_variable_dimension(t_span, stepsize, norm_order,
+    stats = stats_functions_of_variable_dimension(t_span, stepsize,
+                                                  t_eval=t_eval,
+                                                  order=norm_order,
+                                                  collect_jump_times=
                                                   collect_jump_times,
+                                                  collect_dimension_jump_times=
                                                   collect_dimension_jump_times)
     
     if custom_evaluation_functions is not None:
@@ -249,7 +253,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       jump_set_function=jump_set_function,
                                       jump_set_transition_function=
                                       jump_set_transition_function,
-                                      flow_args=flow_args, 
+                                      t_eval=t_eval, flow_args=flow_args, 
                                       jump_rate_args=jump_rate_args,
                                       transition_args=transition_args,
                                       jump_time_transition_args=
@@ -387,7 +391,7 @@ if __name__ == '__main__':
     b = 0
     transition_args = (-.3, )
     jump_times = np.arange(8.5, 100, 8.5)
-    t_eval = np.linspace(0, t_end, t_end+1)
+    t_eval = np.linspace(0, t_end, 2*t_end+1)
     jump_set_args = (.1, )
     jump_set_transition_args = (.5, )
     
@@ -421,9 +425,9 @@ if __name__ == '__main__':
     oscillator.plot_coordinates()
     oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function,
                                    ho_transition_function_2, y0, t_span,
-                                   jump_rate_bound, jump_times=jump_times,
-                                   norm_order=[1, 2], collect_jump_times=True,
-                                   flow_args=(a, b),
+                                   jump_rate_bound, t_eval=t_eval,
+                                   jump_times=jump_times, norm_order=[1, 2],
+                                   collect_jump_times=True, flow_args=(a, b),
                                    transition_args=transition_args,
                                    iterations=50,
                                    custom_evaluation_functions=[ho_energy,
