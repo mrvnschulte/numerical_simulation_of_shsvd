@@ -158,29 +158,29 @@ plt.show()
 
 plt.figure(figsize=(8, 6))
 c = plt.contourf(betas, mutation_rates, final_i_values.T, levels=levels, cmap=cmap, norm=norm)
-plt.colorbar(c, label='Mean Final I', ticks=ticks, boundaries=boundaries, format='%.4f')
-plt.ylabel('Mutation Rate')
-plt.xlabel('Beta')
-plt.title('Mean Final I for Different Betas and Mutation Rates')
+plt.colorbar(c, label=r'Mean $I_{ges}(1000)$', ticks=ticks, boundaries=boundaries, format='%.4f')
+plt.ylabel(r'Mutation rate $m$')
+plt.xlabel(r'$\beta$')
+plt.title(r'Mean $I_{ges}(1000)$ for different $\beta$ and mutation rates $m$')
 plt.yticks(mutation_rates)
 plt.xticks(betas)
 plt.plot(betas, critical_m, 'red')
 plt.tight_layout()
-plt.savefig('Mean_final_i_countourf.png')
+plt.savefig('Mean_final_i_countourf.jpg', dpi=600)
 plt.show()
 
 
-beta = .15
-mutation_rate = .2
-sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=500, custom_evaluation_functions=[total_infectious])
-fig = sir_mutation_stats.plot_cefs()
+# beta = .15
+# mutation_rate = .2
+# sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=500, custom_evaluation_functions=[total_infectious])
+# fig = sir_mutation_stats.plot_cefs()
 
-plt.figure(fig)
-plt.grid()
-plt.title('Plot of overall infectious fraction')
-plt.xlabel('Overall infectious fraction')
-plt.savefig('Example.png')
-plt.show()
+# plt.figure(fig)
+# plt.grid()
+# plt.title('Plot of overall infectious fraction')
+# plt.xlabel('Overall infectious fraction')
+# plt.savefig('Example.png')
+# plt.show()
 
 
 # df_empw = pd.DataFrame(final_i_values, index=betas, columns=mutation_rates)
