@@ -755,7 +755,7 @@ class stats_functions_of_variable_dimension():
             if separate_plots or separate:
                 for index in number:
                     index -= 1
-                    jump_times = [item[index] for item in self.jump_times if index < len(self.jump_times)]
+                    jump_times = [item[index] for item in self.jump_times if index < len(item)]
                     plt.hist(jump_times, density=density, label=f'Jump {index+1}')
                     if separate_plots:
                         plt.figure()
@@ -763,11 +763,11 @@ class stats_functions_of_variable_dimension():
                 jump_times = []
                 for index in number:
                     index -= 1
-                    jump_times.append([item[index] for item in self.jump_times if index < len(self.jump_times)])
+                    jump_times.append([item[index] for item in self.jump_times if index < len(item)])
                 plt.hist(jump_times, density=density)
         elif isinstance(number, (int, float, np.float16, np.float32, np.float64)):
             number -= 1
-            jump_times = [item[int(number)] for item in self.jump_times if int(number) < len(self.jump_times)]
+            jump_times = [item[int(number)] for item in self.jump_times if int(number) < len(item)]
             plt.hist(jump_times, density=density)
             
         if title:
