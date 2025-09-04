@@ -933,6 +933,30 @@ class stats_functions_of_variable_dimension():
         return fig
     
     
+    def plot_number_of_jumps(self, density=False, title=None, legend=False,
+                             xlabel=None, ylabel=None, grid=False):
+        
+        number_of_jumps = [len(jump_times) for jump_times in self.jump_times]
+        
+        fig = plt.figure()
+        
+        plt.hist(number_of_jumps, density=density)
+        
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend()
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
+
+    
+    
     def plot_cefs(self, sigma=2, labels=None, title='Plot of cefs',
                   legend=False, xlabel='Time', ylabel='Value', grid=False):
         

@@ -183,7 +183,7 @@ plt.xlabel('Overall infectious fraction')
 plt.savefig('Example.png')
 plt.show()
 
-sir_mutation_stats.plot_inter_jump_times()
+sir_mutation_stats.plot_number_of_jumps()
 
 # df_empw = pd.DataFrame(final_i_values, index=betas, columns=mutation_rates)
 # df_empw.to_csv('Mean_final_i.csv')
