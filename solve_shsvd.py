@@ -200,7 +200,8 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
 def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 initial_value, t_span, jump_rate_bound, iterations=500,
                 tol=1e-5, min_iterations=10, max_iterations=1000,
-                convergence_estimate=None,
+                convergence_estimate=None, estimation_mode='all',
+                estimation_weights=None,
                 jump_times=None, jump_time_transition_function=None,
                 jump_set_function=None, jump_set_transition_function=None, 
                 custom_evaluation_functions=None, stepsize=1, t_eval=None,
@@ -248,51 +249,68 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
     
     if convergence_estimate is not None:
         
+        if not estimation_mode in ['all', 'any', 'sum', 'weighted_sum']:
+            raise ValueError(f"{estimation_mode} is not a suitable estimation\
+                             mode. These are 'all', 'any', 'sum' and\
+                             'weighted_sum'.")
+                
         min_iterations = max(min_iterations, 2)
         iterations = max_iterations
         
-        if not isinstance(convergence_estimate, tuple):
-            if not convergence_estimate.lower() == 'dimension':
-                raise ValueError("Convergence estimate has to be a tuple "
-                                 "consisting of the keyword 'norm' plus its "
-                                 "order, the keyword 'cef' plus its position "
-                                 "or be equal to the keyword 'dimension'")
-            else:
-                convergence_estimate = ('dimension', -1)
+        if not isinstance(convergence_estimate, list):
+                convergence_estimate = [convergence_estimate]
                 
-        else:
-            if not (convergence_estimate[0].lower() == 'norm'
-                    or convergence_estimate[0].lower() == 'cef'):
-                raise ValueError("Convergence estimate has to be a tuple "
-                                 "consisting of the keyword 'norm' plus its "
-                                 "order, the keyword 'cef' plus its position "
-                                 "or be equal to the keyword 'dimension'")
-                
-            elif convergence_estimate[0].lower() == 'norm':
-                if not convergence_estimate[1] in stats.order:
-                    raise ValueError("Norm of order "
-                                     f"{convergence_estimate[1]} is not "
-                                     "stored and hence cannot be evaluated. "
-                                     "Please provide it to norm_order.")
-                else:
-                    index = stats.order.index(convergence_estimate[1])
-                    convergence_estimate = (convergence_estimate[0], index)
+        if estimation_mode == 'weighted_sum':
+            if not len(convergence_estimate) == len(estimation_weights):
+                raise ValueError('Number of estimation weigths must equal\
+                                 number of convergence estimates.')
+            estimation_factors = np.array(estimation_weights)[:,0]
+            estimation_powers = np.array(estimation_weights)[:,1]
 
-            elif (convergence_estimate[0].lower() == 'cef'
-                  and convergence_estimate[1] > len(stats.cef_means)):
-                raise ValueError(f"Only {len(stats.cef_means)} custom "
-                                 "evaluation functions have been provided, "
-                                 f"position {convergence_estimate[1]} cannot "
-                                 "be accessed.")
+        for i, ce in enumerate(convergence_estimate):
+            if not isinstance(ce, tuple):
+                if not ce.lower() == 'dimension':
+                    raise ValueError("Convergence estimate has to be a tuple \
+                                     consisting of the keyword 'norm' plus its\
+                                     order, the keyword 'cef' plus its \
+                                     position or be equal to the keyword \
+                                     'dimension'")
+                else:
+                    convergence_estimate[i] = ('dimension', -1)
+                    
+            else:
+                if not (ce[0].lower() == 'norm'
+                        or ce[0].lower() == 'cef'):
+                    raise ValueError("Convergence estimate has to be a tuple \
+                                     consisting of the keyword 'norm' plus its\
+                                     order, the keyword 'cef' plus its \
+                                     position or be equal to the keyword \
+                                     'dimension'")
+                    
+                elif ce[0].lower() == 'norm':
+                    if not ce[1] in stats.order:
+                        raise ValueError(f"Norm of order {ce[1]} is not stored\
+                                         and hence cannot be evaluated. Please\
+                                         provide it to norm_order.")
+                    else:
+                        index = stats.order.index(ce[1])
+                        convergence_estimate[i] = (ce[0], index)
+    
+                elif (ce[0].lower() == 'cef'
+                      and ce[1] > len(stats.cef_means)):
+                    raise ValueError(f"Only {len(stats.cef_means)} custom \
+                                     evaluation functions have been provided,\
+                                     position {ce[1]} cannot be accessed.")
         
     for it in range(iterations):
         if convergence_estimate is not None and it>=min_iterations:
-            old_convergence_values = deepcopy(getattr(stats,
-                                             convergence_estimate[0]
-                                             + '_means'))
-            if convergence_estimate[1] >= 0:
-                old_convergence_values = old_convergence_values[
-                    convergence_estimate[1]]
+            old_convergence_values = []
+            for i, ce in enumerate(convergence_estimate):
+                old_convergence_values.append(deepcopy(getattr(
+                    stats, ce[0] + '_means')))
+                if ce[1] >= 0:
+                    old_convergence_values[i] = (old_convergence_values[i]
+                                                 [ce[1]])
             
         func = solve_shsvd_single_run(flow_function, jump_rate_function,
                                       transition_function, initial_value,
@@ -313,21 +331,33 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       jump_set_transition_args)
         stats.add_function(func)
         if convergence_estimate is not None and it>=min_iterations:
-            new_convergence_values = getattr(stats,
-                                             convergence_estimate[0]
-                                             + '_means')
-            if convergence_estimate[1] >= 0:
-                new_convergence_values = new_convergence_values[
-                    convergence_estimate[1]]
+            new_convergence_values = []
+            for i, ce in enumerate(convergence_estimate):
+                new_convergence_values.append(getattr(stats, ce[0] + '_means'))
+                if ce[1] >= 0:
+                    new_convergence_values[i] = (new_convergence_values[i]
+                                                 [ce[1]])
                 
             old_convergence_values = np.array(old_convergence_values)
             new_convergence_values = np.array(new_convergence_values)
             
-            max_difference = max(abs(old_convergence_values
-                                     - new_convergence_values))
+            max_difference = np.max(abs(old_convergence_values
+                                        - new_convergence_values), axis=1)
             
-            if max_difference < tol:
-                break
+            if estimation_mode == 'all':
+                if np.all(max_difference < tol):
+                    break
+            elif estimation_mode == 'any':
+                if np.any(max_difference < tol):
+                    break
+            elif estimation_mode == 'sum':
+                if np.sum(max_difference) < tol:
+                    break
+            elif estimation_mode == 'weighted_sum':
+                if (np.sum(estimation_factors * np.power(max_difference,
+                                                         estimation_powers))
+                    < tol):
+                    break
 
     return stats
 
@@ -500,6 +530,8 @@ if __name__ == '__main__':
                                    custom_evaluation_functions=[ho_energy,
                                                                 ho_first_coordinate],
                                    cef_args=[(2, ), None],
-                                   convergence_estimate=('cef', 0),
-                                   max_iterations=500, tol=1e-3)
+                                   convergence_estimate=[('norm', 2),
+                                                         ('dimension')],
+                                   estimation_mode='all',
+                                   max_iterations=500, tol=1e-2)
     oscillator_stats.plot_norm()
