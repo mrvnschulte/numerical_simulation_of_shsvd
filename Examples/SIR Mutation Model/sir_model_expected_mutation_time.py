@@ -38,7 +38,7 @@ mutation_time_pdf = (m * i * np.exp(-m * r / gamma)) / (1 - np.exp(-m * r[-1] / 
 mutation_time_cdf = np.cumsum((m * i * np.exp(-m * r / gamma)) / (1 - np.exp(-m * r[-1] / gamma)))
 expected_mutation_time = np.cumsum(t_eval * (m * i * np.exp(-m * r / gamma)) / (1 - np.exp(-m * r[-1] / gamma)))
 plt.plot(t_eval, i)
-plt.axvline(40)
+plt.axvline(expected_mutation_time[-1])
 plt.show()
 plt.plot(t_eval, expected_mutation_time)
 plt.show()
@@ -74,3 +74,38 @@ plt.xlabel('Wert')
 plt.ylabel('Häufigkeit')
 plt.grid()
 plt.show()
+
+def lambda_2(t, tau):
+    
+    if isinstance(t, (list, np.ndarray)):
+        lambda2 = np.array([lambda_2(t, tau) for t in t])
+        return lambda2
+    
+    if isinstance(tau, (list, np.ndarray)):
+        lambda2 = np.array([lambda_2(t, tau) for tau in tau])
+        return lambda2
+    
+    if t>=tau:
+        if t>=len(i):
+            lambda2 = m * i[-1] + m * (1 - i[-1]) * i[t-tau]
+        else:
+            lambda2 = m * i[t] + m * (1 - i[t]) * i[t-tau]
+    else:
+        lambda2 = 0
+        
+    return lambda2
+
+    
+integration_value = np.zeros((len(t_eval), len(t_eval)))
+t_eval = t_eval.astype(int)
+
+for j, tau in enumerate(t_eval):
+    integration_value[j] = (lambda_2(t_eval, tau) 
+                         * np.exp(-np.cumsum(lambda_2(t_eval, tau)))
+                         / (1 - np.exp(-np.sum(lambda_2(t_eval + tau, tau))))
+                         * mutation_time_pdf[j])
+second_mutation_time_pdf = np.sum(integration_value, axis=0)
+
+plt.plot(t_eval, second_mutation_time_pdf)
+plt.show()
+plt.plot(t_eval, lambda_2(t_eval, 200) * np.exp(-np.cumsum(lambda_2(t_eval, 200))) * mutation_time_pdf[200])

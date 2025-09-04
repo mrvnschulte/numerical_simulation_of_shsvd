@@ -173,7 +173,7 @@ gamma = .1
 t_span = (0, 500)
 beta = .15
 mutation_rate = .2
-sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=500, custom_evaluation_functions=[total_infectious])
+sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=10, custom_evaluation_functions=[total_infectious])
 fig = sir_mutation_stats.plot_cefs()
 
 plt.figure(fig)
@@ -183,6 +183,7 @@ plt.xlabel('Overall infectious fraction')
 plt.savefig('Example.png')
 plt.show()
 
+sir_mutation_stats.plot_inter_jump_times()
 
 # df_empw = pd.DataFrame(final_i_values, index=betas, columns=mutation_rates)
 # df_empw.to_csv('Mean_final_i.csv')

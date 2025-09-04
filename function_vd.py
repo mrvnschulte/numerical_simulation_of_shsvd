@@ -874,6 +874,64 @@ class stats_functions_of_variable_dimension():
         
         return fig
     
+    def plot_inter_jump_times(self, number=None, density=False, separate=True,
+                        separate_plots=False, title=None, legend=False,
+                        xlabel=None, ylabel=None, grid=False):
+        
+        if not self.collect_jump_times:
+            raise ValueError(f'Jump times have not been in collected in \
+                             {self}')
+            
+        fig = plt.figure()
+        
+        inter_jump_times = []
+
+        for i, jump_times in enumerate(self.jump_times):
+            inter_jump_times.append(np.zeros(len(jump_times)))
+            if len(jump_times)>0:
+                inter_jump_times[i][0] = jump_times[0]
+                if len(jump_times)>1:
+                    inter_jump_times[i][1:] = jump_times[1:] - jump_times[:-1]
+            
+        if not number:
+            plt.hist(np.concatenate(inter_jump_times), density=density)
+        elif isinstance(number, (list, np.ndarray, tuple)):
+            if separate_plots or separate:
+                for index in number:
+                    index -= 1
+                    jump_times = [item[index] for item in inter_jump_times
+                                  if index < len(item)]
+                    plt.hist(jump_times, density=density,
+                             label=f'Jump {index+1}')
+                    if separate_plots:
+                        plt.figure()
+            else:
+                jump_times = []
+                for index in number:
+                    index -= 1
+                    jump_times.append([item[index] for item in inter_jump_times
+                                       if index < len(item)])
+                plt.hist(jump_times, density=density)
+        elif isinstance(number, (int, float, np.float16, np.float32,
+                                 np.float64)):
+            number -= 1
+            jump_times = [item[int(number)] for item in inter_jump_times
+                          if int(number) < len(item)]
+            plt.hist(jump_times, density=density)
+            
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend()
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
+    
     
     def plot_cefs(self, sigma=2, labels=None, title='Plot of cefs',
                   legend=False, xlabel='Time', ylabel='Value', grid=False):
