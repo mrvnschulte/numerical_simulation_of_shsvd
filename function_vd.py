@@ -10,19 +10,41 @@ import bisect
 import matplotlib.pyplot as plt
 import scipy.linalg as la
 
-class function_of_variable_dimension():
+class FunctionOfVariableDimension():
+    """
+    A class for functions of variable dimension.
+    
+    A class to represent a function of variable dimension defined by 
+    time-value pairs.
+    
+    Attributes:
+        times: list
+            A list of time points of the function.
+        values: list
+            A list of corresponding values at the given time points.
+    """
     
     def __init__(self, times=None, values=None):
+        """
+        Initializes the function with given times and values.
         
+        Parameters:
+            times: float, list or array-like, optional
+                A sequence of time points.
+            values: float, list or array-like, optional
+                A sequence of values corresponding to the times.
+        
+        Raises:
+            ValueError: If times and values are not the same length or not
+            array-like.
+        """
         if times is None and values is None:
-            
             self.times = []
             self.values = []
             
         else:
-            
-            times = self.convert_to_list(times)
-            values = self.convert_to_list(values)
+            times = self._convert_to_list(times)
+            values = self._convert_to_list(values)
             
             # Check if initialisation is meaningful
             if not (isinstance(times, (list, np.ndarray)) and
@@ -31,49 +53,74 @@ class function_of_variable_dimension():
             if not (len(times) == len(values)):
                 raise ValueError('Times and values are not of same length')
             for index, value in enumerate(values):
-                values[index] = self.convert_to_list(value)
+                values[index] = self._convert_to_list(value)
                 if (isinstance(values[index], (list, np.ndarray))):
                     continue
                 else:
-                    raise ValueError(f'''{value} in values is not array-like \
-                                     nor can it be converted''')
+                    raise ValueError(f'{value} in values is not array-like \
+                                     nor can it be converted')
             
-            times, values = self.delete_double_values(times, values,
+            times, values = self._delete_double_values(times, values,
                                                       initialisation=True)
             
             self.times = times
             self.values = values
             
-            self.sort()
-            self.check_multiple_jumps()
-            self.check_dimension()
-            
-        
+            # Sanity checks
+            self._sort()
+            self._check_multiple_jumps()
+            self._check_dimension()
+                
     def __call__(self, t):
+        """
+        Returns the interpolated value(s) of the function at the given time(s).
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the function.
         
+        Returns:
+            value: float or list
+                The interpolated value(s) at the given time(s).
+        """
         if isinstance(t, (list, np.ndarray)):
             value = []
             for time in t:
-                value.append(self.interpolate_value(time))
+                value.append(self._interpolate_value(time))
         else:
-            value = self.interpolate_value(t)
+            value = self._interpolate_value(t)
         
         return value
 
-    
-    def convert_to_list(self, number):
+    @staticmethod
+    def _convert_to_list(number):
+        """
+        Converts a number or array-like object to a list.
         
+        Parameters:
+            number: int, float, or np.ndarray
+                The input to be converted.
+        
+        Returns:
+            number: list
+                Converted list.
+        """
         if (isinstance(number, (int, float, np.float16, np.float32,
-                                np.float64))):
+                                np.float64, np.int16, np.int32, np.int64))):
             number = [number]
         elif (isinstance(number, np.ndarray)):
             number = list(number)
             
         return number
         
+    def _sort(self):
+        """
+        Sorts the times and corresponding values in ascending order of time.
         
-    def sort(self):
-        
+        Sorts the times and corresponding values in ascending order of time.
+        If there are times which occur twice, then the method preserves the
+        original order. This is important for jumps of the function.
+        """
         sorted_pairs = sorted(zip(self.times, self.values,
                                   range(len(self.times))),
                               key=lambda x: (x[0], x[2]))
@@ -82,18 +129,36 @@ class function_of_variable_dimension():
         self.times = times
         self.values = values
         
+    def _delete_double_values(self, times, values, initialisation=False):
+        """
+        Removes duplicate time-value pairs from the lists.
         
-    def delete_double_values(self, times, values, initialisation=False):
+        Removes duplicate time-value pairs from times, values during
+        initialisation and duplicates between times, values and self.times
+        and self.values after initialisation.
+
+        Parameters:
+            times: list
+                The list of times.
+            values: list
+                The list of values.
+            initialisation: bool, optional
+                Indicates if this is during initialization (default is False).
         
+        Returns:
+            tuple: Updated lists of times and values without duplicates.
+        """
         indices_to_remove = []
         
         for index_1, (time, value) in enumerate(zip(times, values)):
+            # Find all duplicate times
             if initialisation:
                 indices = [index for index, self_time in enumerate(times)
                            if self_time == time and index > index_1]
             else:
                 indices = [index for index, self_time in enumerate(self.times)
                            if self_time == time]
+            # Check whether found duplicate times are not jumps
             for index in indices:
                 if initialisation:
                     if len(values[index]) == len(value):
@@ -103,17 +168,21 @@ class function_of_variable_dimension():
                     if len(self.values[index]) == len(value):
                         if np.allclose(self.values[index], value):
                             indices_to_remove.insert(0, index_1)
-                        
+        
         for index in indices_to_remove:
-            #print(f'Removed {times[index]}, {values[index]}')
             del times[index]
             del values[index]
             
         return times, values
         
+    def _check_multiple_jumps(self):
+        """
+        Raises an error if multiple jumps occur at the same time.
         
-    def check_multiple_jumps(self):
-        
+        Raises:
+            ValueError: If more than one jump occurs at the same time.
+            
+        """
         unique_times, indices, counts = np.unique(self.times,
                                                   return_counts=True,
                                                   return_index=True)
@@ -122,10 +191,18 @@ class function_of_variable_dimension():
         if len(jump_indices)>0:
             raise ValueError(f'More than one jump occurs at time(s): \
                              {np.array(self.times)[jump_indices]}')
-    
         
-    def check_dimension(self):
+    def _check_dimension(self):
+        """
+        Checks if the function changes dimension unexpectedly.
         
+        Checks if the function changes dimension at a time where no two
+        values are given, i.e. the one before and the one after the change of
+        dimension.
+
+        Raises:
+            ValueError: If the function changes dimension unexpectedly.
+        """
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_values = self.dimension()
         
@@ -141,17 +218,24 @@ class function_of_variable_dimension():
                     raise ValueError(f'Function changes dimension at \
                                      {self.times[j]} without specified jump')
         
+    def _interpolate_value(self, t):
+        """
+        Interpolates the value of the function at a given time.
+
+        Parameters:
+            t: float
+                The time at which to interpolate the value.
         
-    def interpolate_value(self, t):
+        Returns:
+            value: float
+                The interpolated value.
         
+        Raises:
+            ValueError: If the time is outside the range of defined times.
+        """
         if t < self.times[0] or t > self.times[-1]:
             raise ValueError(f't is not between {self.times[0]} and \
                              {self.times[-1]} (first and last value of times)')
-        # elif t == self.times[0]:
-        #     if t in self.jump_times():
-        #         return self.values[1]
-        #     else:
-        #         return self.values[0]
         elif t == self.times[-1]:
             return np.array(self.values[-1])
         
@@ -168,48 +252,80 @@ class function_of_variable_dimension():
     
     
     def add_values(self, times, values):
-        
-        if isinstance(times, (int, float, np.float16, np.float32, np.float64)):
+        """
+        Adds new time-value pairs to the function.
+
+        Parameters:
+            times: float, list or array-like
+                The new time(s) to add.
+            values: float, list or array-like
+                The new value(s) corresponding to the times.
+        """
+        # Convert everything to lists
+        if isinstance(times, (int, float, np.float16, np.float32, np.float64,
+                              np.int16, np.int32, np.int64)):
             single_value = True
         else:
             single_value = False
-        times = self.convert_to_list(times)
-        values = self.convert_to_list(values)
+        times = self._convert_to_list(times)
+        values = self._convert_to_list(values)
         if not single_value:
             for index, value in enumerate(values):
-                values[index] = self.convert_to_list(value)
+                values[index] = self._convert_to_list(value)
         else:
             values = [values]
             
-        times, values = self.delete_double_values(times, values)
+        times, values = self._delete_double_values(times, values)
         
         self.times = self.times + times
         self.values = self.values + values
         
-        self.sort()
-        self.check_multiple_jumps()
-        self.check_dimension()
+        # Sanity checks
+        self._sort()
+        self._check_multiple_jumps()
+        self._check_dimension()
         
         
     def delete_values(self, times=None, values=None, indices=None):
+        """
+        Deletes time-value pairs from the function.
         
+        If nothing is provided to the function, it deletes the last time-value
+        pair. Otherwise, the time and/or value and/or index of the time-value
+        pair to be deleted, can be provided.
+
+        Parameters:
+            times: float or list, optional
+                The time(s) to delete.
+            values: list, optional
+                The value(s) to delete.
+            indices: int or list, optional
+                The indices of the pairs to delete.
+                
+        Raises:
+            ValueError: If a time to be deleted is a dimension jump time or
+                a given time-value(-index) pair is not part of the function.
+            TypeError: 
+        """
+        # If nothing is provided, delete the last time-value pair
         if times == None and values == None and indices == None:
             del self.times[-1]
             del self.values[-1]
             
         elif times in self.times:
-            
             if times in self.dimension_jump_times():
                 raise ValueError('Cannot delete dimension jump time')
             
+            # If only a time is provided, delete this (twice if jump time)
             if values == None and indices == None:
                 index = self.times.index(times)
-                del self.times[index]
-                del self.values[index]
                 if times in self.jump_times():
                     del self.times[index+1]
                     del self.values[index+1]
+                del self.times[index]
+                del self.values[index]
                 
+            # TO-DO: Hier weitermachen
             elif indices == None and isinstance(values, (list, np.ndarray)):
                 index = self.times.index(times)
                 if self.values[index] != values:
@@ -225,8 +341,10 @@ class function_of_variable_dimension():
             
             elif values == None and isinstance(indices, (int, float,
                                                          np.float16,
-                                                         np.float32,
-                                                         np.float64)):
+                                                         np.float32, 
+                                                         np.float64,
+                                                         np.int16, np.int32,
+                                                         np.int64)):
                 if self.times[indices] == times:
                     del self.times[indices]
                     del self.values[indices]
@@ -236,7 +354,8 @@ class function_of_variable_dimension():
                     
             elif (isinstance(values, (list, np.ndarray))
                   and isinstance(indices, (int, float, np.float16, np.float32,
-                                           np.float64))):
+                                           np.float64, np.int16, np.int32,
+                                           np.int64))):
                 if (self.times[indices] == times
                     and self.values[indices] == values):
                     del self.times[indices]
@@ -251,7 +370,7 @@ class function_of_variable_dimension():
                 
         elif values in self.values:
             if isinstance(indices, (int, float, np.float16, np.float32,
-                                    np.float64)):
+                                    np.float64, np.int16, np.int32, np.int64)):
                 if self.values[indices] == values:
                     del self.times[indices]
                     del self.values[indices]
@@ -260,8 +379,7 @@ class function_of_variable_dimension():
                 del self.times[index]
                 del self.values[index]
                 
-        elif isinstance(indices, (int, float, np.float16, np.float32,
-                                  np.float64)):
+        elif isinstance(indices, (int, np.int16, np.int32, np.int64)):
             del self.times[indices]
             del self.values[indices]
             
@@ -278,6 +396,10 @@ class function_of_variable_dimension():
             else:
                 for time, value, index in zip(times, values, index):
                     self.delete_values(time, value, index)
+        
+        elif isinstance(times, (int, float, np.float16, np.float32,
+                                np.float64, np.int16, np.int32, np.int64)):
+            raise ValueError(f'{times} is not in the times of the function')
                     
         elif isinstance(values, (list, np.ndarray)):
             if indices == None:
@@ -290,7 +412,7 @@ class function_of_variable_dimension():
         elif isinstance(indices, (list, np.ndarray)):
             for index in indices:
                 self.delete_values(indices=index)
-                
+                                
         else:
             raise TypeError('Input format not correct')
     
@@ -558,7 +680,7 @@ class function_of_variable_dimension():
             dimension_values = [len(value) for value in self.values]
             return dimension_values
         elif isinstance(t, (int, float, np.float16, np.float32, np.float64,
-                            np.int64)):
+                            np.int16, np.int32, np.int64)):
             dimension_values = self.dimension()
             if t == self.times[-1]:
                 return dimension_values[-1]
@@ -584,7 +706,7 @@ class function_of_variable_dimension():
     
     def concatenate(self, other):
         
-        if not isinstance(other, function_of_variable_dimension):
+        if not isinstance(other, FunctionOfVariableDimension):
             raise TypeError(f'{other} is not a function of variable dimension')
         
         if len(self.times) == 0:
@@ -594,7 +716,7 @@ class function_of_variable_dimension():
             func = self
             
         elif self.times[-1] == other.times[0]:
-            func = function_of_variable_dimension(self.times + other.times,
+            func = FunctionOfVariableDimension(self.times + other.times,
                                                   self.values + other.values)
         
         elif self.times[-1] < other.times[0]:
@@ -606,7 +728,7 @@ class function_of_variable_dimension():
                                      and first time for second function are\
                                          the same)')
                 
-            func = function_of_variable_dimension(self.times + other.times,
+            func = FunctionOfVariableDimension(self.times + other.times,
                                                   self.values + other.values)
             
         else:
@@ -626,7 +748,7 @@ class function_of_variable_dimension():
                             raise ValueError('Functions do not coincide at \
                                              overlapping times')
             
-            func = function_of_variable_dimension(self.times + other.times,
+            func = FunctionOfVariableDimension(self.times + other.times,
                                                   self.values + other.values)
             
         return func
@@ -652,7 +774,8 @@ class stats_functions_of_variable_dimension():
             
         if isinstance(order, (list, np.ndarray, tuple)):
             self.order = list(order)
-        elif isinstance(order, (int, float, np.float16, np.float32, np.float64)):
+        elif isinstance(order, (int, float, np.float16, np.float32, np.float64,
+                                np.int16, np.int32, np.int64)):
             self.order = [order]
         else:
             raise TypeError('Order is not array-like nor a number')
@@ -680,7 +803,7 @@ class stats_functions_of_variable_dimension():
         
     def add_function(self, func):
         
-        if not isinstance(func, function_of_variable_dimension):
+        if not isinstance(func, FunctionOfVariableDimension):
             raise TypeError(f'{func} is not a function of variable dimension')
             
         if func.times[0] > self.times[0] or func.times[-1] < self.times[-1]:
@@ -855,7 +978,7 @@ class stats_functions_of_variable_dimension():
                                        if index < len(item)])
                 plt.hist(jump_times, density=density)
         elif isinstance(number, (int, float, np.float16, np.float32,
-                                 np.float64)):
+                                 np.float64, np.int16, np.int32, np.int64)):
             number -= 1
             jump_times = [item[int(number)] for item in self.jump_times
                           if int(number) < len(item)]
@@ -913,7 +1036,7 @@ class stats_functions_of_variable_dimension():
                                        if index < len(item)])
                 plt.hist(jump_times, density=density)
         elif isinstance(number, (int, float, np.float16, np.float32,
-                                 np.float64)):
+                                 np.float64, np.int16, np.int32, np.int64)):
             number -= 1
             jump_times = [item[int(number)] for item in inter_jump_times
                           if int(number) < len(item)]
@@ -1049,14 +1172,14 @@ class stats_functions_of_variable_dimension():
         if isinstance(t, (list, np.ndarray)):
             value = []
             for time in t:
-                value.append(self.interpolate_value(time, values))
+                value.append(self._interpolate_value(time, values))
         else:
-            value = self.interpolate_value(t, values)
+            value = self._interpolate_value(t, values)
         
         return value
 
 
-    def interpolate_value(self, t, values):
+    def _interpolate_value(self, t, values):
         
         if t < self.times[0] or t > self.times[-1]:
             raise ValueError(f't is not between {self.times[0]} and \
@@ -1096,15 +1219,16 @@ class stats_functions_of_variable_dimension():
 
 
 if __name__ == '__main__':
-    times = [0, 1, 1, 2, 2, 4]
-    values = [[0], [1], [.5, .5], [1.5, 2.5], [4], [6]]
-    func = function_of_variable_dimension(times, values)
+    times = [0, 1, 1, 2, 2, 4, 4, 5]
+    values = [[0], [1], [.5, .5], [1.5, 2.5], [4], [6], [8], [9]]
+    func = FunctionOfVariableDimension(times, values)
     jt, index = func.jump_times(return_index=True)
     djt = func.dimension_jump_times()
     ndjt = func.non_dimension_jump_times()
     print(jt, index)
     print(djt)
     print(ndjt)
+    func.delete_values(4)
     y = func(1)
     print(y)
     y = func.left_limit(1)
@@ -1121,16 +1245,16 @@ if __name__ == '__main__':
     func.plot_coordinates()
     times = [0, 1, 1, 1, 2, 2, 4]
     values = [[0], [1], [1], [.5, .5], [1.5, 2.5], [4], [6]]
-    func = function_of_variable_dimension(times, values)
-    func_2 = function_of_variable_dimension(2, 3)
+    func = FunctionOfVariableDimension(times, values)
+    func_2 = FunctionOfVariableDimension(2, 3)
     
     times = [0, 1, 1, 2, 2, 4]
     values = [[0], [2], [1, 1], [3, 5], [8], [12]]
     times_2 = [4, 5, 6]
     values_2 = [[2, 2, 2], [4, 3, 1], [6, 4, 0]]
     
-    func_new = function_of_variable_dimension(times, values)
-    func_2 = function_of_variable_dimension(times_2, values_2)
+    func_new = FunctionOfVariableDimension(times, values)
+    func_2 = FunctionOfVariableDimension(times_2, values_2)
     
     func_conc = func.concatenate(func_2)
     
@@ -1156,7 +1280,7 @@ if __name__ == '__main__':
     times = [0, 1, 1, 2, 2, 3]
     values = [[1-0], [1-.666], [1-.666, 1-0], [1-1, 1-.333], [1-.333], [1-1]]
     
-    func = function_of_variable_dimension(times, values)
+    func = FunctionOfVariableDimension(times, values)
     fig = func.plot_coordinates(show_jump_times=True)
     plt.figure(fig)
     plt.axhline(0, color='black')

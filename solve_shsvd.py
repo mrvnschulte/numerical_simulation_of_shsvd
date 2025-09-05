@@ -7,7 +7,7 @@ Created on Tue Jan 14 16:15:51 2025
 
 from scipy.integrate import solve_ivp
 import numpy as np
-from function_vd import (function_of_variable_dimension,
+from function_vd import (FunctionOfVariableDimension,
                          stats_functions_of_variable_dimension)
 from random import random
 import matplotlib.pyplot as plt
@@ -56,7 +56,7 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
     else:
         tf = end_time
         
-    func = function_of_variable_dimension()
+    func = FunctionOfVariableDimension()
     
     while tf < end_time:
     
@@ -143,7 +143,7 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
             
     t0, end_time = t_span
         
-    func = function_of_variable_dimension()
+    func = FunctionOfVariableDimension()
     
     r = random()
     t = t0 - np.log(r) / jump_rate_bound
