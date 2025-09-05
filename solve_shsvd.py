@@ -200,8 +200,8 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
 def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 initial_value, t_span, jump_rate_bound, iterations=500,
                 tol=1e-5, min_iterations=10, max_iterations=1000,
-                convergence_estimate=None, estimation_mode='all',
-                estimation_weights=None,
+                convergence_estimate=None, convergence_estimate_type='max',
+                estimation_mode='all', estimation_weights=None,
                 jump_times=None, jump_time_transition_function=None,
                 jump_set_function=None, jump_set_transition_function=None, 
                 custom_evaluation_functions=None, stepsize=1, t_eval=None,
@@ -210,8 +210,10 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 jump_rate_args=None, transition_args=None,
                 jump_time_transition_args=None, jump_set_args=None,
                 jump_set_transition_args=None, 
-                cef_args=None):
+                cef_args=None, verbose=False, verbose_step=1):
     
+    if verbose:
+        print('Initialising')
     stats = stats_functions_of_variable_dimension(t_span, stepsize,
                                                   t_eval=t_eval,
                                                   order=norm_order,
@@ -248,7 +250,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
             stats.add_custom_evaluation_function(custom_evaluation_functions)
     
     if convergence_estimate is not None:
-        
+                
         if not estimation_mode in ['all', 'any', 'sum', 'weighted_sum']:
             raise ValueError(f"{estimation_mode} is not a suitable estimation\
                              mode. These are 'all', 'any', 'sum' and\
@@ -259,6 +261,29 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
         
         if not isinstance(convergence_estimate, list):
                 convergence_estimate = [convergence_estimate]
+                
+        if not isinstance(convergence_estimate_type, str):
+            if not len(convergence_estimate_type) == len(convergence_estimate):
+                raise ValueError("Either a string or a list of strings with \
+                                 length equal to the number of convergence \
+                                 estimates must be provided for convergence \
+                                 estimate type. Possible options are 'max', \
+                                 'mean' and 'int'.")
+        else:
+            convergence_estimate_type = ([convergence_estimate_type]
+                                         * len(convergence_estimate))
+        
+        estimate_type_dict = {
+            'max': [],
+            'mean': [],
+            'int': []
+        }
+        for i, cet in enumerate(convergence_estimate_type):
+            if not cet in ['max', 'mean', 'int']:
+                raise ValueError(f"Possible options for convergence estimate \
+                                 type are 'max', 'mean' and 'int'. {cet} is \
+                                 no known option.")
+            estimate_type_dict[cet].append(i)
                 
         if estimation_mode == 'weighted_sum':
             if not len(convergence_estimate) == len(estimation_weights):
@@ -302,7 +327,14 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                      evaluation functions have been provided,\
                                      position {ce[1]} cannot be accessed.")
         
+        if verbose:
+            successful_convergence = False
+    
+    if verbose:
+        print('Computing sample paths of the system')
     for it in range(iterations):
+        if verbose and (it+1) % verbose_step == 0:
+            print(f'Sample path {it+1}')
         if convergence_estimate is not None and it>=min_iterations:
             old_convergence_values = []
             for i, ce in enumerate(convergence_estimate):
@@ -341,23 +373,60 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
             old_convergence_values = np.array(old_convergence_values)
             new_convergence_values = np.array(new_convergence_values)
             
-            max_difference = np.max(abs(old_convergence_values
-                                        - new_convergence_values), axis=1)
+            difference = np.zeros(old_convergence_values.shape[0])
+            if len(estimate_type_dict['max'])>0:
+                difference[estimate_type_dict['max']] = np.max(abs(
+                    old_convergence_values - new_convergence_values)
+                    [estimate_type_dict['max']], axis=1)
+            if len(estimate_type_dict['mean'])>0:
+                difference[estimate_type_dict['mean']] = np.mean(abs(
+                    old_convergence_values - new_convergence_values)
+                    [estimate_type_dict['mean']], axis=1)
+            if len(estimate_type_dict['int'])>0:
+                difference[estimate_type_dict['int']] = np.sum(abs(
+                    old_convergence_values - new_convergence_values)
+                    [estimate_type_dict['int']], axis=1) * stepsize
             
+            if verbose and (it+1) % verbose_step == 0:
+                print(f'Convergence estimates: {difference}')
+
             if estimation_mode == 'all':
-                if np.all(max_difference < tol):
+                if np.all(difference < tol):
+                    if verbose:
+                        print(f'Convergence estimate below tolerance with \
+                              {it+1} sample paths')
+                        successful_convergence = True
                     break
             elif estimation_mode == 'any':
-                if np.any(max_difference < tol):
+                if np.any(difference < tol):
+                    if verbose:
+                        print(f'Convergence estimate below tolerance with \
+                              {it+1} sample paths')
+                        successful_convergence = True
                     break
             elif estimation_mode == 'sum':
-                if np.sum(max_difference) < tol:
+                if np.sum(difference) < tol:
+                    if verbose:
+                        print(f'Convergence estimate below tolerance with \
+                              {it+1} sample paths')
+                        successful_convergence = True
                     break
             elif estimation_mode == 'weighted_sum':
-                if (np.sum(estimation_factors * np.power(max_difference,
+                if (np.sum(estimation_factors * np.power(difference,
                                                          estimation_powers))
                     < tol):
+                    if verbose:
+                        print(f'Convergence estimate below tolerance with \
+                              {it+1} sample paths')
+                        successful_convergence = True
                     break
+
+    if verbose:
+        if convergence_estimate is not None:
+            if not successful_convergence:
+                print('Maximum number of sample paths reached without convergence')
+        else:
+            print('Given number of sample paths reached')
 
     return stats
 
@@ -531,7 +600,9 @@ if __name__ == '__main__':
                                                                 ho_first_coordinate],
                                    cef_args=[(2, ), None],
                                    convergence_estimate=[('norm', 2),
-                                                         ('dimension')],
-                                   estimation_mode='all',
-                                   max_iterations=500, tol=1e-2)
+                                                         ('norm', 2)],
+                                   convergence_estimate_type=['max', 'mean'],
+                                   estimation_mode='sum',
+                                   max_iterations=500, tol=5e-3, verbose=True,
+                                   verbose_step=10)
     oscillator_stats.plot_norm()
