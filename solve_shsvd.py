@@ -17,7 +17,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
                jump_times=None, jump_set_function=None,
                jump_set_transition_function=None, t_eval=None, flow_args=None,
                transition_args=None, jump_set_args=None,
-               jump_set_transition_args=None):
+               jump_set_transition_args=None, solve_ivp_method='RK45',
+               **solve_ivp_options):
     
     if transition_args is not None:
         def transition_function(t, y, fun=transition_function):
@@ -61,7 +62,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
     
         t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
         y = solve_ivp(flow_function, (t0, tf), initial_value,
-                      t_eval=t_eval_partial, events=jump_set_function)
+                      t_eval=t_eval_partial, events=jump_set_function,
+                      method=solve_ivp_method, **solve_ivp_options)
         func.add_values(y.t, y.y.T)
         
         if jump_set_function is not None:
@@ -91,7 +93,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
         
     t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
     y = solve_ivp(flow_function, (t0, tf), initial_value,
-                  t_eval=t_eval_partial, events=jump_set_function)
+                  t_eval=t_eval_partial, events=jump_set_function,
+                  method=solve_ivp_method, **solve_ivp_options)
     func.add_values(y.t, y.y.T)
     
     if jump_set_function is not None:
@@ -107,7 +110,8 @@ def solve_hsvd(flow_function, transition_function, initial_value, t_span,
 
             t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
             y = solve_ivp(flow_function, (t0, tf), initial_value,
-                          t_eval=t_eval_partial, events=jump_set_function)
+                          t_eval=t_eval_partial, events=jump_set_function,
+                          method=solve_ivp_method, **solve_ivp_options)
             func.add_values(y.t, y.y.T)
             
             
@@ -123,7 +127,8 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
                            flow_args=None, jump_rate_args=None,
                            transition_args=None,
                            jump_time_transition_args=None, 
-                           jump_set_args=None, jump_set_transition_args=None):
+                           jump_set_args=None, jump_set_transition_args=None,
+                           solve_ivp_method='RK45', **solve_ivp_options):
     
     if jump_rate_args is not None:
         def jump_rate_function(t, y, fun=jump_rate_function):
@@ -154,7 +159,9 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
                                   transition_args=jump_time_transition_args,
                                   jump_set_args=jump_set_args,
                                   jump_set_transition_args=
-                                  jump_set_transition_args)
+                                  jump_set_transition_args, 
+                                  solve_ivp_method=solve_ivp_method,
+                                  **solve_ivp_options)
         
         if not store_t0:
             func_partial.delete_values(times=[t0])
@@ -187,7 +194,9 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
                               transition_args=jump_time_transition_args,
                               jump_set_args=jump_set_args,
                               jump_set_transition_args=
-                              jump_set_transition_args)
+                              jump_set_transition_args,
+                              solve_ivp_method=solve_ivp_method,
+                              **solve_ivp_options)
     
     if not store_t0:
         func_partial.delete_values(times=[t0])
@@ -210,7 +219,8 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 jump_rate_args=None, transition_args=None,
                 jump_time_transition_args=None, jump_set_args=None,
                 jump_set_transition_args=None, 
-                cef_args=None, verbose=False, verbose_step=1):
+                cef_args=None, solve_ivp_method='RK45', verbose=False, 
+                verbose_step=1, **solve_ivp_options):
     
     if verbose:
         print('Initialising')
@@ -360,7 +370,9 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       jump_time_transition_args,
                                       jump_set_args=jump_set_args,
                                       jump_set_transition_args=
-                                      jump_set_transition_args)
+                                      jump_set_transition_args,
+                                      solve_ivp_method=solve_ivp_method,
+                                      **solve_ivp_options)
         stats.add_function(func)
         if convergence_estimate is not None and it>=min_iterations:
             new_convergence_values = []
