@@ -250,7 +250,6 @@ class FunctionOfVariableDimension():
         
         return value
     
-    
     def add_values(self, times, values):
         """
         Adds new time-value pairs to the function.
@@ -285,7 +284,6 @@ class FunctionOfVariableDimension():
         self._check_multiple_jumps()
         self._check_dimension()
         
-        
     def delete_values(self, times=None, values=None, indices=None):
         """
         Deletes time-value pairs from the function.
@@ -305,7 +303,8 @@ class FunctionOfVariableDimension():
         Raises:
             ValueError: If a time to be deleted is a dimension jump time or
                 a given time-value(-index) pair is not part of the function.
-            TypeError: 
+            TypeError: If input types do not match, i.e. one time, but
+                multiple values and/or indices are provided.
         """
         # If nothing is provided, delete the last time-value pair
         if times == None and values == None and indices == None:
@@ -313,6 +312,7 @@ class FunctionOfVariableDimension():
             del self.values[-1]
             
         elif times in self.times:
+            # Dimension jump times cannot be deleted
             if times in self.dimension_jump_times():
                 raise ValueError('Cannot delete dimension jump time')
             
@@ -325,7 +325,7 @@ class FunctionOfVariableDimension():
                 del self.times[index]
                 del self.values[index]
                 
-            # TO-DO: Hier weitermachen
+            # If time and value is provided, delete this if existing
             elif indices == None and isinstance(values, (list, np.ndarray)):
                 index = self.times.index(times)
                 if self.values[index] != values:
@@ -339,12 +339,9 @@ class FunctionOfVariableDimension():
                     del self.times[index]
                     del self.values[index]
             
-            elif values == None and isinstance(indices, (int, float,
-                                                         np.float16,
-                                                         np.float32, 
-                                                         np.float64,
-                                                         np.int16, np.int32,
-                                                         np.int64)):
+            # If time and index is provided, delete this if time is at index
+            elif values == None and isinstance(indices, (int, np.int16,
+                                                         np.int32, np.int64)):
                 if self.times[indices] == times:
                     del self.times[indices]
                     del self.values[indices]
@@ -352,9 +349,9 @@ class FunctionOfVariableDimension():
                     raise ValueError(f'Times at index {indices} does not \
                                      have value {times}')
                     
+            # If time, value and index are provided, delete this if they match
             elif (isinstance(values, (list, np.ndarray))
-                  and isinstance(indices, (int, float, np.float16, np.float32,
-                                           np.float64, np.int16, np.int32,
+                  and isinstance(indices, (int, np.int16, np.int32, 
                                            np.int64))):
                 if (self.times[indices] == times
                     and self.values[indices] == values):
@@ -367,22 +364,9 @@ class FunctionOfVariableDimension():
                     
             else:
                 raise TypeError('Input types do not match')
-                
-        elif values in self.values:
-            if isinstance(indices, (int, float, np.float16, np.float32,
-                                    np.float64, np.int16, np.int32, np.int64)):
-                if self.values[indices] == values:
-                    del self.times[indices]
-                    del self.values[indices]
-            elif indices == None:
-                index = self.values.index(values)
-                del self.times[index]
-                del self.values[index]
-                
-        elif isinstance(indices, (int, np.int16, np.int32, np.int64)):
-            del self.times[indices]
-            del self.values[indices]
             
+        # If multiple times are provided, delete all of them together with
+        # the corresponding values and/or indices
         elif isinstance(times, (list, np.ndarray)):
             if values == None and indices == None:
                 for time in times:
@@ -397,10 +381,26 @@ class FunctionOfVariableDimension():
                 for time, value, index in zip(times, values, index):
                     self.delete_values(time, value, index)
         
+        # If time is not stores, raise an error
         elif isinstance(times, (int, float, np.float16, np.float32,
                                 np.float64, np.int16, np.int32, np.int64)):
             raise ValueError(f'{times} is not in the times of the function')
-                    
+
+        elif values in self.values:
+            # If value and index are provided, delete this if they match
+            if isinstance(indices, (int, float, np.float16, np.float32,
+                                    np.float64, np.int16, np.int32, np.int64)):
+                if self.values[indices] == values:
+                    del self.times[indices]
+                    del self.values[indices]
+            # If only value is provided, search for this and delete it
+            elif indices == None:
+                index = self.values.index(values)
+                del self.times[index]
+                del self.values[index]
+         
+        # If multiple values are provided, delete each together with the
+        # corresponding index if provided
         elif isinstance(values, (list, np.ndarray)):
             if indices == None:
                 for value in values:
@@ -408,7 +408,21 @@ class FunctionOfVariableDimension():
             else:
                 for value, index in zip(values, indices):
                     self.delete_values(values=value, indices=index)
-        
+                   
+        # If value is provided, that is not stored, raise an error
+        elif values is not None:
+            raise ValueError('Value is stored as a value of the function')
+
+        # If an index is provided, delete the corresponding time-value pair
+        elif isinstance(indices, (int, np.int16, np.int32, np.int64)):
+            if indices > len(self.times):
+                raise ValueError(f'Index {indices} is greater than number of\
+                                 stored time-value pairs ({len(self.times)})')
+            del self.times[indices]
+            del self.values[indices]
+            
+        # If multiple indices are provided, delete the corresponding time-value
+        # pairs
         elif isinstance(indices, (list, np.ndarray)):
             for index in indices:
                 self.delete_values(indices=index)
@@ -416,25 +430,44 @@ class FunctionOfVariableDimension():
         else:
             raise TypeError('Input format not correct')
     
-    
     def maximal_time(self):
-        
+        """
+        Returns the maximum time in the function.
+
+        Returns:
+            float: The maximum time, or -inf if no times are defined.
+        """
         if len(self.times) > 0:
             return self.times[-1]
         else:
             return -np.infty
-        
     
     def minimal_time(self):
-        
+        """
+        Returns the minimum time in the function.
+
+        Returns:
+            float: The minimum time, or +inf if no times are defined.
+        """
         if len(self.times) > 0:
             return self.times[0]
         else:
             return np.infty
-        
     
     def jump_times(self, return_index=False):
+        """
+        Returns the times at which jumps occur in the function.
+
+        Parameters:
+            return_index: bool, optional
+                If True, also return the indices of the jump times.
         
+        Returns:
+            jump_times: list
+                The times at which jumps occur.
+            indices: list, optional
+                The indices of the jump times, if requested.
+        """
         if return_index:
             unique_times, indices, counts = np.unique(self.times,
                                                       return_counts=True,
@@ -451,9 +484,20 @@ class FunctionOfVariableDimension():
         else:
             return jump_times
     
-    
     def dimension_jump_times(self, return_index=False):
+        """
+        Returns the times at which dimension jumps occur.
+
+        Parameters:
+            return_index: bool, optional
+                If True, also return the indices of the dimension jump times.
         
+        Returns:
+            dimension_jump_times: list
+                The times at which dimension jumps occur.
+            indices: list, optional
+                The indices of the dimension jump times, if requested.
+        """
         jump_times, indices = self.jump_times(return_index=True)
         dimension_jump_indices = [index for index in indices
                                   if (len(self.values[index])
@@ -466,37 +510,84 @@ class FunctionOfVariableDimension():
         else:
             return dimension_jump_times
     
-    
     def non_dimension_jump_times(self, return_index=False):
+        """
+        Returns the jump times at which the dimension does not change.
+
+        Parameters:
+            return_index: bool, optional
+                If True, also return the indices of the non-dimension jump
+                times.
         
-        jump_times = self.jump_times()
-        dimension_jump_times = self.dimension_jump_times()
+        Returns:
+            non_dimension_jump_times: list
+                The times at which there are no dimension jumps.
+        """
+        jump_times, jump_indices = self.jump_times(return_index=True)
+        dimension_jump_times, dimension_jump_indices = (
+            self.dimension_jump_times(return_index=True))
         non_dimension_jump_times = jump_times[~np.isin(jump_times,
                                                        dimension_jump_times)]
         
-        return non_dimension_jump_times
-        
+        if return_index:
+            non_dimension_jump_indices = jump_indices[~np.isin(
+                jump_indices, dimension_jump_indices)]
+            return non_dimension_jump_times, non_dimension_jump_indices
+        else:
+            return non_dimension_jump_times
         
     def plot_coordinates(self, title='Plot of the coordinates', legend=True,
                          labels=None, xlabel='Time', ylabel='Value',
                          separate_plots=False, sharex=True, sharey=True,
                          grid=False, show_jump_times=False,
                          show_dimension_jump_times=False):
+        """
+        Plots the coordinate values of the function against time.
+
+        Parameters:
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            labels: list, optional
+                Custom labels for the plot lines.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            separate_plots: bool, optional
+                If True, create separate plots for each dimension.
+            sharex: bool, optional
+                If True, share the x-axis among separate plots.
+            sharey: bool, optional
+                If True, share the y-axis among separate plots.
+            grid: bool, optional
+                If True, show grid lines on the plot.
+            show_jump_times: bool, optional
+                If True, indicate jump times on the plot.
+            show_dimension_jump_times: bool, optional
+                If True, indicate dimension jump times on the plot.
         
+        Returns:
+            fig: The figure object created.
+        """
+        # Create figures
         fig = plt.figure()
-        dimension_jump_times, dimension_jump_indices = self.dimension_jump_times(return_index=True)
+        dimension_jump_times, dimension_jump_indices = (
+            self.dimension_jump_times(return_index=True))
         dimensions = self.dimension()
         max_dimension = max(dimensions)
         prev_index = 0
         
         if not labels:
-            labels=[f'Coordinate {i+1}' for i in range(max_dimension)]
+            labels = [f'Coordinate {i+1}' for i in range(max_dimension)]
             
         if separate_plots:
             figures = []
             for i in range(max_dimension):
                 figures.append(plt.figure())
         
+        # Plot the function iteratively between all dimension jump times
         for index in dimension_jump_indices:
             plt.figure(fig)
             plt.gca().set_prop_cycle(None)
@@ -526,6 +617,7 @@ class FunctionOfVariableDimension():
         else:
             plt.plot(self.times[prev_index:], self.values[prev_index:])
         
+        # Add specified design objects
         if title:
             plt.title(title)
         if legend:
@@ -537,6 +629,7 @@ class FunctionOfVariableDimension():
         if grid:
             plt.grid()
             
+        # Plot vertical lines for (dimension) jump times, if desired
         if show_jump_times:
             jump_times = self.jump_times()
             ylim = plt.ylim()
@@ -559,6 +652,7 @@ class FunctionOfVariableDimension():
                     plt.legend(lines + [dvlines],
                                labels + ['Dimension jump times'])
             
+        # Add design objects to separate coordinate plots, if desired
         if separate_plots and (sharex or sharey or title or grid
                                or show_jump_times):
             xlim = plt.xlim()
@@ -595,7 +689,8 @@ class FunctionOfVariableDimension():
                         else:
                             plt.legend(lines + [dvlines],
                                        labels + ['Dimension jump times'])
-                            
+             
+        # Plot dimension coordinates after last jump in separate plot
         if separate_plots:
             for i in range(current_dimension):
                 plt.figure(figures[i])
@@ -607,28 +702,53 @@ class FunctionOfVariableDimension():
         
         return fig
     
-    
     def plot_norm(self, order=2, title='Plot of the norm', legend=True,
                   labels=None, xlabel='Time', ylabel='Value', grid=False,
                   show_jump_times=False, show_dimension_jump_times=False):
+        """
+        Plots the norm of the function over time.
+
+        Parameters:
+            order: int or list, optional
+                The order of the norm to plot. Default is the 2-norm.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            labels: list, optional
+                Custom labels for the plot lines.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
+            show_jump_times: bool, optional
+                If True, indicate jump times on the plot.
+            show_dimension_jump_times: bool, optional
+                If True, indicate dimension jump times on the plot.
         
+        Returns:
+            fig: The figure object created.
+        """
+        # Create figure
         fig = plt.figure()
         
         if not isinstance(order, (list, np.ndarray)):
             order_list = [order]
         else:
             order_list = order
-        
         if not labels:
             labels = [f'{order} norm' for order in order_list]
         
+        # Compute and plot norms
         lines = []
-        
         for order in order_list:
             value_norms = self.norm(order=order)
             line, = plt.plot(self.times, value_norms)
             lines.append(line)
         
+        # Add specified design objects
         if title:
             plt.title(title)
         if legend:
@@ -639,6 +759,8 @@ class FunctionOfVariableDimension():
             plt.ylabel(ylabel)
         if grid:
             plt.grid()
+            
+        # Add vertical lines for (dimension) jump times, if desired
         if show_jump_times:
             jump_times = self.jump_times()
             ylim = plt.ylim()
@@ -662,9 +784,22 @@ class FunctionOfVariableDimension():
         
         return fig
     
-    
     def norm(self, order=None, return_times=False):
+        """
+        Computes the norm of the function values.
+
+        Parameters:
+            order: int or None, optional
+                The order of the norm to compute.
+            return_times: bool, optional
+                If True, return the corresponding times with the norms.
         
+        Returns:
+            value_norms: list
+                The computed norms.
+            times: list, optional
+                The corresponding times, if requested.
+        """
         value_norms = [float(la.norm(value, ord=order)) for value
                        in self.values]
         
@@ -673,12 +808,28 @@ class FunctionOfVariableDimension():
         
         return value_norms
     
-    
     def dimension(self, t=None):
+        """
+        Returns the dimension of the function at a given time or the
+        dimensions at all times.
+
+        Parameters:
+            t: float, list, or None, optional
+                The time point(s) at which to evaluate the dimension.
         
+        Returns:
+            dimension_values: list
+                The dimensions at the requested times.
+        
+        Raises:
+            TypeError: If t is not array-like nor a number.
+        """
+        # If t is not provided, return dimension for all times
         if t is None:
             dimension_values = [len(value) for value in self.values]
             return dimension_values
+        
+        # If t is a number, return the dimension at that time
         elif isinstance(t, (int, float, np.float16, np.float32, np.float64,
                             np.int16, np.int32, np.int64)):
             dimension_values = self.dimension()
@@ -687,15 +838,27 @@ class FunctionOfVariableDimension():
             index_t = bisect.bisect_right(self.times, t)
             dimension_t = dimension_values[index_t]
             return dimension_t
+        
+        # If t is array-like, return the dimensions at these times
         elif isinstance(t, (list, np.ndarray, tuple)):
             dimensions_t = [self.dimension(time) for time in t]
             return dimensions_t
+        
+        # If t is neither, raise an error
         else:
             raise TypeError(f'{t} is not array-like nor a number')
     
-    
     def left_limit(self, t):
+        """
+        Returns the left limit of the function at a given time.
+
+        Parameters:
+            t: float
+                The time at which to evaluate the left limit.
         
+        Returns:
+            value: The value of the left limit.
+        """
         if t in self.jump_times():
             value = self.values[self.times.index(t)]
         else:
@@ -703,34 +866,66 @@ class FunctionOfVariableDimension():
             
         return value
     
-    
     def concatenate(self, other):
+        """
+        Concatenates this function with another function of variable
+        dimension.
+
+        Parameters:
+            other: function_of_variable_dimension
+                The function to concatenate with.
         
+        Returns:
+            func: function_of_variable_dimension
+                The concatenated function.
+        
+        Raises:
+            TypeError: If the other object is not a function of variable
+                dimension.
+            ValueError: If the dimensions of the functions do not match at
+                overlap.
+        """
         if not isinstance(other, FunctionOfVariableDimension):
             raise TypeError(f'{other} is not a function of variable dimension')
         
+        # Handle the special case of an empty function
         if len(self.times) == 0:
             func = other
-            
         elif len(other.times) == 0:
             func = self
             
+        # If the last time of this function equals the first time of the
+        # other function, append the times and values
         elif self.times[-1] == other.times[0]:
             func = FunctionOfVariableDimension(self.times + other.times,
                                                   self.values + other.values)
         
+        # If the last time of this function is smaller than the first time of
+        # the other function, append the times and values if the last and first
+        # dimension match. Otherwise, raise an error.
         elif self.times[-1] < other.times[0]:
             if ((self.dimension(self.times[-1])
                 != other.dimension(other.times[0]))
                 and not other.times[0] in other.jump_times()):
                 raise ValueError('Dimensions of function do not coincide (only\
                                  possible when last time for first function\
-                                     and first time for second function are\
-                                         the same)')
+                                 and first time for second function are\
+                                 the same)')
+            if ((self.dimension(self.times[-1])
+                != other.dimension(other.times[0]))
+                and other.times[0] in other.jump_times()
+                and self.dimension(self.times[-1])
+                != len(other.left_limit(other.times[0]))):
+                raise ValueError('Dimensions of function do not coincide (only\
+                                 possible when last time for first function\
+                                 and first time for second function are\
+                                 the same)')
                 
             func = FunctionOfVariableDimension(self.times + other.times,
                                                   self.values + other.values)
-            
+        
+        # If both functions overlap, check if they coincide at overlapping
+        # times. If not, raise an error, otherwise merge times and values.
         else:
             jump_position = 0
             for index_self, t in enumerate(self.times):
@@ -754,11 +949,60 @@ class FunctionOfVariableDimension():
         return func
     
     
-class stats_functions_of_variable_dimension():
+class StatsFunctionsOfVariableDimension():
+    """
+    A class to compute and store statistics of functions of variable
+    dimension.
+
+    Attributes:
+        evaluated_functions: Count of the functions evaluated.
+        times: A list of time points for evaluations.
+        order: A list of orders for norms to be computed.
+        norm_means: Means of the norms for each order over time.
+        norm_variances: Variances of the norms for each order over time.
+        norm_m2: Sum of squared differences of the norms for each order
+            over time.
+        dimension_means: Means of the dimensions over time.
+        dimension_variances: Variances of the dimensions over time.
+        dimension_m2: Sum of squared differences of the dimension for each
+            order over time.
+        custom_evaluation_functions: List of user-provided functions to
+            evaluate.
+        cef_means: Means of the custom evaluation functions over time.
+        cef_variances: Variances of the custom evaluation functions over
+            time.
+        cef_m2: Sum of squared differences of the custom evaluation
+            functions over time.
+        collect_jump_times: Indicates whether jump times are stored.
+        jump_times: List of all jump times of evaluated functions. Exists
+            only, when collect_jump_times is True.
+        collect_dimension_jump_times: Indicates whether dimension jump
+            times are stored.
+        dimension_jump_times: List of all dimension jump times of
+            evaluated functions. Exists only, when
+            collect_dimension_jump_times is True.
+    """
     
     def __init__(self, t_span, stepsize=1, t_eval=None, order=2,
                  collect_jump_times=False, collect_dimension_jump_times=False):
-        
+        """
+        Initializes the statistics collector.
+
+        Parameters:
+            t_span: tuple
+                The start and end times for evaluations.
+            stepsize: float, optional
+                The step size for time evaluations.
+            t_eval: list or array-like, optional
+                Specific times at which to evaluate the functions.
+            order: int, list or array-like, optional
+                The order(s) of the norm(s) to compute.
+            collect_jump_times: bool, optional
+                If True, collect jump times during evaluation.
+            collect_dimension_jump_times: bool, optional
+                If True, collect dimension jump times during evaluation.
+        """
+        # Create self.times according to stepsize or t_eval
         t0, tf = t_span
         decimal_places = (len(str(stepsize).split('.')[1])
                           if '.' in str(stepsize) else 0)
@@ -766,10 +1010,10 @@ class stats_functions_of_variable_dimension():
             self.times = self.__partial_t_eval__(t_eval, t0, tf)
         else:
             self.times = np.round(np.arange(t0, tf, stepsize), decimal_places)
-        
         if not np.isclose(self.times[-1], tf):
             self.times = np.append(self.times, tf)
             
+        # Initialize all other attributes
         self.evaluated_functions = 0
             
         if isinstance(order, (list, np.ndarray, tuple)):
@@ -798,11 +1042,20 @@ class stats_functions_of_variable_dimension():
             self.dimension_jump_times = []
             
         self.custom_evaluation_functions = []
-            
-        
         
     def add_function(self, func):
+        """
+        Adds a function to the statistics collector for evaluation.
+
+        Parameters:
+            func: function_of_variable_dimension
+                The function to add and evaluate.
         
+        Raises:
+            TypeError: If func is not a function of variable dimension.
+            ValueError: If the function's time range does not match the
+                collector's.
+        """
         if not isinstance(func, FunctionOfVariableDimension):
             raise TypeError(f'{func} is not a function of variable dimension')
             
@@ -815,6 +1068,7 @@ class stats_functions_of_variable_dimension():
         
         values = func(self.times)
 
+        # Update norm means and variances
         for index, order in enumerate(self.order):
             
             norm_values = np.array([np.linalg.norm(value, ord=order)
@@ -822,26 +1076,26 @@ class stats_functions_of_variable_dimension():
             old_means = self.norm_means[index]
             old_m2 = self.norm_m2[index]
             
-            new_means, new_variances, new_m2 = self.update_means_and_variances(
+            new_means, new_variances, new_m2 = self._update_means_and_variances(
                 norm_values, old_means, old_m2)
             
             self.norm_means[index] = new_means
             self.norm_m2[index] = new_m2
             self.norm_variances[index] = new_variances
 
-        
+        # Update dimension means and variances
         dimension_values = np.array(func.dimension(self.times))
         old_means = self.dimension_means
         old_m2 = self.dimension_m2
         
-        new_means, new_variances, new_m2 = self.update_means_and_variances(
+        new_means, new_variances, new_m2 = self._update_means_and_variances(
             dimension_values, old_means, old_m2)
 
         self.dimension_means = new_means
         self.dimension_m2 = new_m2
         self.dimension_variances = new_variances
         
-        # To-Do: Add evaluation of custom evaluation functions
+        # Update means and variances of custom evaluation functions
         for index, evaluation_func in enumerate(
                 self.custom_evaluation_functions):
             
@@ -849,24 +1103,37 @@ class stats_functions_of_variable_dimension():
             old_means = self.cef_means[index]
             old_m2 = self.cef_m2[index]
             
-            new_means, new_variances, new_m2 = self.update_means_and_variances(
+            new_means, new_variances, new_m2 = self._update_means_and_variances(
                 cef_values, old_means, old_m2)
             
             self.cef_means[index] = new_means
             self.cef_m2[index] = new_m2
             self.cef_variances[index] = new_variances
 
-            
+        # Collect jump times, if desired
         if self.collect_jump_times:
             self.jump_times.append(func.jump_times())
         if self.collect_dimension_jump_times:
             self.dimension_jump_times.append(func.dimension_jump_times())
         
+    def _update_means_and_variances(self, values, old_means, old_m2):
+        """
+        Updates the means and variances based on new values.
         
-    def update_means_and_variances(self, values, old_means, old_m2):
+        Updates the means and variances based on new values using Welford's
+        online algorithm.
+
+        Parameters:
+            values: array-like
+                The new values for which to update statistics.
+            old_means: array-like
+                The current means before the update.
+            old_m2: array-like
+                The current M2 values before the update.
         
-        # Update means and variances according to Welfords online algorithm
-        
+        Returns:
+            tuple: Updated means, variances, and M2 values.
+        """
         delta = values - old_means
         new_means = old_means + delta / self.evaluated_functions
         delta2 = values - new_means
@@ -877,12 +1144,37 @@ class stats_functions_of_variable_dimension():
             new_variances = 0
         
         return new_means, new_variances, new_m2
-    
         
     def plot_norm(self, order=2, sigma=2, labels=None,
                   title='Plot of mean norm', legend=True, xlabel='Time',
                   ylabel='Norm', grid=False):
+        """
+        Plots the mean norms of the collected functions.
+
+        Parameters:
+            order: int or list, optional
+                The order(s) of the norm to plot.
+            sigma: float, optional
+                The factor for the variance shading.
+            labels: list, optional
+                Custom labels for the plot lines.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
         
+        Returns:
+            fig: The figure object created.
+            
+        Raises:
+            ValueError: 
+        """
         fig = plt.figure()
         
         if not isinstance(order, (list, np.ndarray)):
@@ -896,6 +1188,9 @@ class stats_functions_of_variable_dimension():
         lines = []
         
         for order in order_list:
+            if not order in self.order:
+                raise ValueError('{order} is not in self.order and hence was \
+                                 not computed')
             index = self.order.index(order)
             line, = plt.plot(self.times, self.norm_means[index])
             plt.fill_between(self.times, self.norm_means[index]
@@ -917,11 +1212,31 @@ class stats_functions_of_variable_dimension():
         
         return fig
         
-        
     def plot_dimension(self, sigma=2, labels=None,
                        title='Plot of mean dimension', legend=False,
                        xlabel='Time', ylabel='Dimension', grid=False):
+        """
+        Plots the mean dimensions of the collected functions.
+
+        Parameters:
+            sigma: float, optional
+                The factor for the variance shading.
+            labels: list, optional
+                Custom labels for the plot lines.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
         
+        Returns:
+            fig: The figure object created.
+        """
         fig = plt.figure()
         
         lines = []
@@ -946,143 +1261,31 @@ class stats_functions_of_variable_dimension():
             plt.grid()
         
         return fig
-        
-        
-    def plot_jump_times(self, number=None, density=False, separate=True,
-                        separate_plots=False, title=None, legend=False,
-                        xlabel=None, ylabel=None, grid=False):
-        
-        if not self.collect_jump_times:
-            raise ValueError(f'Jump times have not been in collected in \
-                             {self}')
-            
-        fig = plt.figure()
-        
-        if not number:
-            plt.hist(np.concatenate(self.jump_times), density=density)
-        elif isinstance(number, (list, np.ndarray, tuple)):
-            if separate_plots or separate:
-                for index in number:
-                    index -= 1
-                    jump_times = [item[index] for item in self.jump_times
-                                  if index < len(item)]
-                    plt.hist(jump_times, density=density,
-                             label=f'Jump {index+1}')
-                    if separate_plots:
-                        plt.figure()
-            else:
-                jump_times = []
-                for index in number:
-                    index -= 1
-                    jump_times.append([item[index] for item in self.jump_times
-                                       if index < len(item)])
-                plt.hist(jump_times, density=density)
-        elif isinstance(number, (int, float, np.float16, np.float32,
-                                 np.float64, np.int16, np.int32, np.int64)):
-            number -= 1
-            jump_times = [item[int(number)] for item in self.jump_times
-                          if int(number) < len(item)]
-            plt.hist(jump_times, density=density)
-            
-        if title:
-            plt.title(title)
-        if legend:
-            plt.legend()
-        if xlabel:
-            plt.xlabel(xlabel)
-        if ylabel:
-            plt.ylabel(ylabel)
-        if grid:
-            plt.grid()
-        
-        return fig
-    
-    def plot_inter_jump_times(self, number=None, density=False, separate=True,
-                        separate_plots=False, title=None, legend=False,
-                        xlabel=None, ylabel=None, grid=False):
-        
-        if not self.collect_jump_times:
-            raise ValueError(f'Jump times have not been in collected in \
-                             {self}')
-            
-        fig = plt.figure()
-        
-        inter_jump_times = []
-
-        for i, jump_times in enumerate(self.jump_times):
-            inter_jump_times.append(np.zeros(len(jump_times)))
-            if len(jump_times)>0:
-                inter_jump_times[i][0] = jump_times[0]
-                if len(jump_times)>1:
-                    inter_jump_times[i][1:] = jump_times[1:] - jump_times[:-1]
-            
-        if not number:
-            plt.hist(np.concatenate(inter_jump_times), density=density)
-        elif isinstance(number, (list, np.ndarray, tuple)):
-            if separate_plots or separate:
-                for index in number:
-                    index -= 1
-                    jump_times = [item[index] for item in inter_jump_times
-                                  if index < len(item)]
-                    plt.hist(jump_times, density=density,
-                             label=f'Jump {index+1}')
-                    if separate_plots:
-                        plt.figure()
-            else:
-                jump_times = []
-                for index in number:
-                    index -= 1
-                    jump_times.append([item[index] for item in inter_jump_times
-                                       if index < len(item)])
-                plt.hist(jump_times, density=density)
-        elif isinstance(number, (int, float, np.float16, np.float32,
-                                 np.float64, np.int16, np.int32, np.int64)):
-            number -= 1
-            jump_times = [item[int(number)] for item in inter_jump_times
-                          if int(number) < len(item)]
-            plt.hist(jump_times, density=density)
-            
-        if title:
-            plt.title(title)
-        if legend:
-            plt.legend()
-        if xlabel:
-            plt.xlabel(xlabel)
-        if ylabel:
-            plt.ylabel(ylabel)
-        if grid:
-            plt.grid()
-        
-        return fig
-    
-    
-    def plot_number_of_jumps(self, density=False, title=None, legend=False,
-                             xlabel=None, ylabel=None, grid=False):
-        
-        number_of_jumps = [len(jump_times) for jump_times in self.jump_times]
-        
-        fig = plt.figure()
-        
-        plt.hist(number_of_jumps, density=density)
-        
-        if title:
-            plt.title(title)
-        if legend:
-            plt.legend()
-        if xlabel:
-            plt.xlabel(xlabel)
-        if ylabel:
-            plt.ylabel(ylabel)
-        if grid:
-            plt.grid()
-        
-        return fig
-
-    
     
     def plot_cefs(self, sigma=2, labels=None, title='Plot of cefs',
                   legend=False, xlabel='Time', ylabel='Value', grid=False):
+        """
+        Plots the means of the custom evaluation functions (CEFs).
+
+        Parameters:
+            sigma: float, optional
+                The factor for the variance shading.
+            labels: list, optional
+                Custom labels for the plot lines.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
         
+        Returns:
+            fig: The figure object created.
+        """
         fig = plt.figure()
         
         lines = []
@@ -1110,10 +1313,231 @@ class stats_functions_of_variable_dimension():
             plt.grid()
         
         return fig
+        
+    def plot_jump_times(self, number=None, density=False, separate=False,
+                        separate_plots=False, title=None, legend=False,
+                        xlabel=None, ylabel=None, grid=False):
+        """
+        Plots a histogram of the jump times.
+
+        Parameters:
+            number: list, optional
+                Specific jump numbers to plot.
+            density: bool, optional
+                If True, normalize the histogram.
+            separate: bool, optional
+                If True, plot jumps separately.
+            separate_plots: bool, optional
+                If True, create separate plots for each jump time.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
+        
+        Returns:
+            fig: The figure object created.
+            
+        Raises:
+            ValueError: If jump times have not been collected.
+        """
+        if not self.collect_jump_times:
+            raise ValueError(f'Jump times have not been in collected in \
+                             {self}')
+            
+        fig = plt.figure()
+        
+        if not number:
+            max_jumps = max(len(jump_times) for jump_times in self.jump_times)
+            number = np.arange(1, max_jumps+1)
+        if isinstance(number, (list, np.ndarray, tuple)):
+            if separate_plots or separate:
+                for index in number:
+                    index -= 1
+                    jump_times = [item[index] for item in self.jump_times
+                                  if index < len(item)]
+                    plt.hist(jump_times, density=density,
+                             label=f'Jump {index+1}')
+                    if separate_plots:
+                        plt.figure()
+            else:
+                jump_times = []
+                for index in number:
+                    index -= 1
+                    jump_times.extend([item[index] for item in self.jump_times
+                                       if index < len(item)])
+                plt.hist(jump_times, density=density)
+        elif isinstance(number, (int, float, np.float16, np.float32,
+                                 np.float64, np.int16, np.int32, np.int64)):
+            number -= 1
+            jump_times = [item[int(number)] for item in self.jump_times
+                          if int(number) < len(item)]
+            plt.hist(jump_times, density=density)
+            
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend()
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
     
+    def plot_inter_jump_times(self, number=None, density=False, separate=False,
+                        separate_plots=False, title=None, legend=False,
+                        xlabel=None, ylabel=None, grid=False):
+        """
+        Plots a histogram of the inter-jump times.
+
+        Parameters:
+            number: list, optional
+                Specific jump numbers to plot.
+            density: bool, optional
+                If True, normalize the histogram.
+            separate: bool, optional
+                If True, create separate plots for each jump.
+            separate_plots: bool, optional
+                Create separate plots for each inter-jump time.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
+        
+        Returns:
+            fig: The figure object created.
+                    
+        Raises:
+            ValueError: If jump times have not been collected.
+        """
+        if not self.collect_jump_times:
+            raise ValueError(f'Jump times have not been in collected in \
+                             {self}')
+            
+        fig = plt.figure()
+        
+        inter_jump_times = []
+
+        for i, jump_times in enumerate(self.jump_times):
+            inter_jump_times.append(np.zeros(len(jump_times)))
+            if len(jump_times)>0:
+                inter_jump_times[i][0] = jump_times[0]
+                if len(jump_times)>1:
+                    inter_jump_times[i][1:] = jump_times[1:] - jump_times[:-1]
+            
+        if not number:
+            max_jumps = max(len(jump_times) for jump_times in self.jump_times)
+            number = np.arange(1, max_jumps+1)
+        if isinstance(number, (list, np.ndarray, tuple)):
+            if separate_plots or separate:
+                for index in number:
+                    index -= 1
+                    jump_times = [item[index] for item in inter_jump_times
+                                  if index < len(item)]
+                    plt.hist(jump_times, density=density,
+                             label=f'Jump {index+1}')
+                    if separate_plots:
+                        plt.figure()
+            else:
+                jump_times = []
+                for index in number:
+                    index -= 1
+                    jump_times.extend([item[index] for item in inter_jump_times
+                                       if index < len(item)])
+                plt.hist(jump_times, density=density)
+        elif isinstance(number, (int, float, np.float16, np.float32,
+                                 np.float64, np.int16, np.int32, np.int64)):
+            number -= 1
+            jump_times = [item[int(number)] for item in inter_jump_times
+                          if int(number) < len(item)]
+            plt.hist(jump_times, density=density)
+            
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend()
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
+    
+    def plot_number_of_jumps(self, density=False, title=None, legend=False,
+                             xlabel=None, ylabel=None, grid=False):
+        """
+        Plots a histogram of the number of jumps.
+
+        Parameters:
+            density: bool, optional
+                If True, normalize the histogram.
+            title: str, optional
+                The title of the plot.
+            legend: bool, optional
+                If True, show the legend.
+            xlabel: str, optional
+                Label for the x-axis.
+            ylabel: str, optional
+                Label for the y-axis.
+            grid: bool, optional
+                If True, show grid lines on the plot.
+        
+        Returns:
+            fig: The figure object created.
+                    
+        Raises:
+            ValueError: If jump times have not been collected.
+        """
+        if not self.collect_jump_times:
+            raise ValueError(f'Jump times have not been in collected in \
+                             {self}')
+
+        number_of_jumps = [len(jump_times) for jump_times in self.jump_times]
+        
+        fig = plt.figure()
+        
+        plt.hist(number_of_jumps, density=density)
+        
+        if title:
+            plt.title(title)
+        if legend:
+            plt.legend()
+        if xlabel:
+            plt.xlabel(xlabel)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if grid:
+            plt.grid()
+        
+        return fig
     
     def add_custom_evaluation_function(self, func):
+        """
+        Adds a custom evaluation function to be evaluated later.
+
+        Parameters:
+            func: callable
+                The custom evaluation function to add.
         
+        Raises:
+            ValueError: If functions have already been evaluated.
+        """
         if self.evaluated_functions > 0:
             raise ValueError('Can only add custom evaluation function if no \
                              functions have been evaluated yet')
@@ -1123,52 +1547,114 @@ class stats_functions_of_variable_dimension():
         self.cef_means.append(np.zeros(len(self.times)))
         self.cef_variances.append(np.zeros(len(self.times)))
         self.cef_m2.append(np.zeros(len(self.times)))
-        
-        
-    def evaluate_cefs(self, t):
-        
-        value = self.evaluate(t, self.cef_means)
-        
-        return value
-    
     
     def evaluate_norm(self, t):
+        """
+        Evaluates the mean norm at given time(s).
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the mean norm.
         
-        value = self.evaluate(t, self.norm_means)
+        Returns:
+            value: Evaluated norm means.
+        """
+        value = self._evaluate(t, self.norm_means)
         
         return value
-    
     
     def evaluate_dimension(self, t):
+        """
+        Evaluates the mean dimension at a given time.
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the mean dimension.
         
-        value = self.evaluate(t, self.dimension_means)
+        Returns:
+            value: Evaluated dimension means.
+        """
+        value = self._evaluate(t, self.dimension_means)
         
         return value
     
-    
-    def evaluate_cef_variances(self, t):
+    def evaluate_cefs(self, t):
+        """
+        Evaluates the mean of the custom evaluation functions at given time(s).
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the mean of the CEFs.
         
-        value = self.evaluate(t, self.cef_variances)
+        Returns:
+            value: Evaluated custom evaluation function means.
+        """
+        value = self._evaluate(t, self.cef_means)
         
-        return value
-    
+        return value    
     
     def evaluate_norm_variance(self, t):
+        """
+        Evaluates the variances of the norms at given time(s).
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the variances.
         
-        value = self.evaluate(t, self.norm_variances)
+        Returns:
+            value: Evaluated norm variances.
+        """
+        value = self._evaluate(t, self.norm_variances)
         
         return value
-    
     
     def evaluate_dimension_variances(self, t):
+        """
+        Evaluates the variances of the dimensions at given time(s).
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the variances.
         
-        value = self.evaluate(t, self.dimension_variances)
+        Returns:
+            value: Evaluated dimension variances.
+        """
+        value = self._evaluate(t, self.dimension_variances)
         
         return value
         
-    
-    def evaluate(self, t, values):
+    def evaluate_cef_variances(self, t):
+        """
+        Evaluates the variances of the cefs at given time(s).
+
+        Evaluates the variances of the custom evaluation functions
+        at given time(s).
         
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the variances of the 
+                CEFs.
+        
+        Returns:
+            value: Evaluated variances of the CEFs.
+        """
+        value = self._evaluate(t, self.cef_variances)
+        
+        return value
+    
+    def _evaluate(self, t, values):
+        """
+        Evaluates the specified values at given time points by interpolation.
+
+        Parameters:
+            t: float, list, or array-like
+                The time point(s) at which to evaluate the values.
+            values: array-like
+                The values to evaluate.
+        
+        Returns:
+            value: Evaluated value(s) at the specified time point(s).
+        """
         if isinstance(t, (list, np.ndarray)):
             value = []
             for time in t:
@@ -1178,9 +1664,21 @@ class stats_functions_of_variable_dimension():
         
         return value
 
-
     def _interpolate_value(self, t, values):
+        """
+        Interpolates the values at a given time(s).
+
+        Parameters:
+            t: float
+                The time at which to interpolate the value.
         
+        Returns:
+            value: float
+                The interpolated value.
+        
+        Raises:
+            ValueError: If the time is outside the range of defined times.
+        """
         if t < self.times[0] or t > self.times[-1]:
             raise ValueError(f't is not between {self.times[0]} and \
                              {self.times[-1]} (first and last value of times)')
@@ -1200,7 +1698,24 @@ class stats_functions_of_variable_dimension():
 
     @staticmethod
     def __partial_t_eval__(t_eval, t0, tf):
+        """
+        Reduces t_eval to values between t0 and tf.
         
+        Prepares the evaluation times by ensuring they are within the 
+        specified range.
+
+        Parameters:
+            t_eval: list or array-like
+                The specified evaluation times.
+            t0: float
+                The start of the time range.
+            tf: float
+                The end of the time range.
+
+        Returns:
+            t_eval_partial: array
+                The filtered evaluation times within the range.
+        """
         if t_eval is None:
             return None
         
@@ -1228,7 +1743,7 @@ if __name__ == '__main__':
     print(jt, index)
     print(djt)
     print(ndjt)
-    func.delete_values(4)
+    #func.delete_values(4)
     y = func(1)
     print(y)
     y = func.left_limit(1)
@@ -1266,7 +1781,7 @@ if __name__ == '__main__':
     test = func([1.5, 3])
     print(test)
     
-    stats = stats_functions_of_variable_dimension((0, 4), .25, order=[1, 2],
+    stats = StatsFunctionsOfVariableDimension((0, 4), .25, order=[1, 2],
                                                   collect_jump_times=True)
     stats.add_function(func)
     stats.add_function(func_new)
