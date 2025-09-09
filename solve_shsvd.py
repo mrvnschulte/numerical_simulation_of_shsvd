@@ -182,7 +182,7 @@ def solve_hsvd(flow_function, initial_value, t_span, jump_times=None,
 
 def solve_shsvd_single_run(flow_function, jump_rate_function,
                            transition_function, initial_value, t_span,
-                           jump_rate_bound, jump_times=None,
+                           jump_rate_bound=None, jump_times=None,
                            jump_time_transition_function=None,
                            jump_set_function=None,
                            jump_set_transition_function=None, t_eval=None,
@@ -190,7 +190,8 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
                            transition_args=None,
                            jump_time_transition_args=None, 
                            jump_set_args=None, jump_set_transition_args=None,
-                           solve_ivp_method='RK45', **solve_ivp_options):
+                           check_jump_rate=False, solve_ivp_method='RK45',
+                           **solve_ivp_options):
     """
     Executes a single run of the stochastic hybrid system dynamics.
 
@@ -210,8 +211,9 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
             The initial state of the system.
         t_span: tuple
             A tuple specifying the start and end times for integration.
-        jump_rate_bound: float
-            The upper bound of the jump rate.
+        jump_rate_bound: float, optional
+            The upper bound of the jump rate. If none is provided, it will be
+            estimated during simulation.
         jump_times: list, optional
             A list of times at which jumps occur.
         jump_time_transition_function: callable, optional
@@ -238,8 +240,12 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
             Additional arguments to pass to the jump_set_function.
         jump_set_transition_args: tuple, optional
             Additional arguments to pass to the jump_set_transition_function.
+        check_jump_rate: bool, optional
+            If True, check if jump_rate_bound was violated in each step.
+            Automatically set to True, if no jump_rate_bound is provided.
         solve_ivp_method: str, optional
-            The method to use for solving the initial value problem (default is 'RK45').
+            The method to use for solving the initial value problem (default is
+            'RK45').
         solve_ivp_options: keyword arguments, optional
             Additional options for the solve_ivp function.
 
@@ -270,12 +276,15 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
     
     # Compute next jump time of homogeneous Poisson process with rate
     # jump_rate_bound
+    if jump_rate_bound is None or jump_rate_bound == 0:
+        jump_rate_bound = max(jump_rate_function(t0, initial_value), 1e-10)
+        check_jump_rate = True
     r = random()
-    t = t0 - np.log(r) / jump_rate_bound
+    t = min(t0 - np.log(r) / jump_rate_bound, end_time)
     
     store_t0 = True
     
-    while t < end_time:
+    while t <= end_time:
         # Solve solution until next possible jump
         func_partial = solve_hsvd(flow_function, 
                                   initial_value, (t0, t),
@@ -294,16 +303,29 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
                                   solve_ivp_method=solve_ivp_method,
                                   **solve_ivp_options)
         
+        # Check if jump_rate_bound was violated, if necessary
+        if check_jump_rate:
+            max_jump_rate = max([jump_rate_function(time, value)
+                                 for time, value in zip(func_partial.times,
+                                                        func_partial.values)])
+            if max_jump_rate > jump_rate_bound:
+                jump_rate_bound = max_jump_rate
+                t = min(t0 - np.log(r) / jump_rate_bound, end_time)
+                continue
+            
         if not store_t0:
             func_partial.delete_values(times=[t0])
+            
+        if t == end_time:
+            break
             
         last_time = func_partial.times[-1]
         last_value = func_partial.values[-1]
                 
         t0 = t
         
-        # Check with acceptance-rejection method if jump is a jump of the
-        # nonhomogeneous Poisson process
+        # Check with acceptance-rejection method if possible jump is a jump of 
+        # the nonhomogeneous Poisson process
         s = random()
         if s <= jump_rate_function(last_time, last_value)/jump_rate_bound:
             initial_value = transition_function(last_time, last_value)
@@ -320,34 +342,14 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
 
         # Compute next jump of the homogeneous Poisson process
         r = random()
-        t = t - np.log(r) / jump_rate_bound
-        
-    # Solve until final time if next possible jump is greater than final time
-    func_partial = solve_hsvd(flow_function, initial_value, (t0, t),
-                              jump_times=jump_times, 
-                              jump_time_transition_function=
-                              jump_time_transition_function,
-                              jump_set_function=jump_set_function,
-                              jump_set_transition_function=
-                              jump_set_transition_function, t_eval=t_eval, 
-                              flow_args=flow_args, 
-                              jump_time_transition_args=
-                              jump_time_transition_args,
-                              jump_set_args=jump_set_args,
-                              jump_set_transition_args=
-                              jump_set_transition_args, 
-                              solve_ivp_method=solve_ivp_method, 
-                              **solve_ivp_options)
-    
-    if not store_t0:
-        func_partial.delete_values(times=[t0])
+        t = min(t0 - np.log(r) / jump_rate_bound, end_time)
 
     func = func.concatenate(func_partial)
     
     return func
 
 def solve_shsvd(flow_function, jump_rate_function, transition_function,
-                initial_value, t_span, jump_rate_bound, jump_times=None,
+                initial_value, t_span, jump_rate_bound=None, jump_times=None,
                 jump_time_transition_function=None, jump_set_function=None,
                 jump_set_transition_function=None,
                 custom_evaluation_functions=None, stepsize=1, t_eval=None,
@@ -355,8 +357,9 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                 collect_dimension_jump_times=False, flow_args=None,
                 jump_rate_args=None, transition_args=None,
                 jump_time_transition_args=None, jump_set_args=None,
-                jump_set_transition_args=None, cef_args=None, iterations=500,
-                tol=1e-5, min_iterations=10, max_iterations=1000,
+                jump_set_transition_args=None, cef_args=None,
+                check_jump_rate=False, iterations=500, tol=1e-5,
+                min_iterations=10, max_iterations=1000, 
                 convergence_estimate=None, convergence_estimate_type='max',
                 estimation_mode='all', estimation_weights=None,
                 solve_ivp_method='RK45', verbose=False, verbose_step=1,
@@ -379,8 +382,9 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
             The initial state of the system.
         t_span: tuple
             A tuple specifying the start and end times for integration.
-        jump_rate_bound: float
-            The upper bound of the jump rate.
+        jump_rate_bound: float, optional
+            The upper bound of the jump rate. If none is provided, it will be
+            estimated during simulation.
         jump_times: list, optional
             A list of times at which jumps occur.
         jump_time_transition_function: callable, optional
@@ -415,6 +419,9 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
             Additional arguments to pass to the jump_set_transition_function.
         cef_args: tuple, optional
             Additional arguments for custom evaluation functions.
+        check_jump_rate: bool, optional
+            If True, check if jump_rate_bound was violated in each step.
+            Automatically set to True, if no jump_rate_bound is provided.
         iterations: int, optional
             The number of iterations to perform (default is 500).
         tol: float or list, optional
@@ -625,6 +632,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       jump_set_args=jump_set_args,
                                       jump_set_transition_args=
                                       jump_set_transition_args,
+                                      check_jump_rate=check_jump_rate,
                                       solve_ivp_method=solve_ivp_method,
                                       **solve_ivp_options)
         stats.add_function(func)
@@ -1055,7 +1063,7 @@ if __name__ == '__main__':
     oscillator = solve_shsvd_single_run(harmonic_oscillator,
                                         ho_jump_rate_function,
                                         ho_transition_function_2, y0, t_span,
-                                        jump_rate_bound, jump_times=jump_times,
+                                        1, jump_times=jump_times,
                                         flow_args=(a, b),
                                         transition_args=transition_args,
                                         t_eval=t_eval)
