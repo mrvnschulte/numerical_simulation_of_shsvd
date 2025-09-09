@@ -322,7 +322,7 @@ def solve_shsvd_single_run(flow_function, jump_rate_function,
         r = random()
         t = t - np.log(r) / jump_rate_bound
         
-    # Solve until final time if next possible jump is greater
+    # Solve until final time if next possible jump is greater than final time
     func_partial = solve_hsvd(flow_function, initial_value, (t0, t),
                               jump_times=jump_times, 
                               jump_time_transition_function=
@@ -1047,7 +1047,6 @@ if __name__ == '__main__':
                                 jump_set_transition_args=
                                 jump_set_transition_args)    
     fig = det_oscillator.plot_coordinates()
-    
     # plt.figure(fig)
     # plt.grid()
     # plt.tight_layout()
@@ -1061,6 +1060,7 @@ if __name__ == '__main__':
                                         transition_args=transition_args,
                                         t_eval=t_eval)
     oscillator.plot_coordinates()
+    print(oscillator.norm([1, 10, 50, 100]))
     oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function,
                                    ho_transition_function_2, y0, t_span,
                                    jump_rate_bound, t_eval=t_eval,

@@ -521,7 +521,7 @@ class FunctionOfVariableDimension():
         
         Returns:
             non_dimension_jump_times: list
-                The times at which there are no dimension jumps.
+                The jump times at which there are no dimension jumps.
         """
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_jump_times, dimension_jump_indices = (
@@ -784,11 +784,16 @@ class FunctionOfVariableDimension():
         
         return fig
     
-    def norm(self, order=None, return_times=False):
+    def norm(self, t=None, order=None, return_times=False):
         """
-        Computes the norm of the function values.
+        Computes the norm of the function values at given time(s).
+        
+        Computes the norm of the function values at given time(s) or at all
+        times, if no time is provided.
 
         Parameters:
+            t: float, list, or None, optional
+                The time point(s) at which to evaluate the norm.
             order: int or None, optional
                 The order of the norm to compute.
             return_times: bool, optional
@@ -800,8 +805,12 @@ class FunctionOfVariableDimension():
             times: list, optional
                 The corresponding times, if requested.
         """
-        value_norms = [float(la.norm(value, ord=order)) for value
-                       in self.values]
+        if t is None:
+            values = self.values
+        else:
+            values = self(t)
+            
+        value_norms = [float(la.norm(value, ord=order)) for value in values]
         
         if return_times:
             return value_norms, self.times
@@ -810,8 +819,10 @@ class FunctionOfVariableDimension():
     
     def dimension(self, t=None):
         """
-        Returns the dimension of the function at a given time or the
-        dimensions at all times.
+        Returns the dimension of the function at given time(s).
+        
+        Returns the dimension of the function at the given time(s) or the
+        dimensions at all times, if no time is provided.
 
         Parameters:
             t: float, list, or None, optional

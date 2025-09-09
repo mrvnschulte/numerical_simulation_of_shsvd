@@ -37,4 +37,5 @@ x0 = np.array([.001, 0, .001, 0, .998, 0, 0, 0])
 
 res = solve_ivp(two_variant_model, (t0, tf), x0, args=(.12, .15, .5))
 
-plt.plot(res.t, res.y.T)
+plt.plot(res.t, res.y.T, label=['i1', 'i12', 'i2', 'i21', 's', 'r1', 'r2', 'r'])
+plt.legend()
