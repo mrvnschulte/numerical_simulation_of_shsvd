@@ -473,11 +473,11 @@ class FunctionOfVariableDimension():
                                                       return_counts=True,
                                                       return_index=
                                                       return_index)
-            jump_indices = indices[counts == 2]
+            jump_indices = list(indices[counts == 2])
         else:
             unique_times, counts = np.unique(self.times, return_counts=True,
                                              return_index=return_index)
-        jump_times = unique_times[counts == 2]
+        jump_times = list(unique_times[counts == 2])
         
         if return_index:
             return jump_times,  jump_indices
@@ -503,7 +503,7 @@ class FunctionOfVariableDimension():
                                   if (len(self.values[index])
                                       != len(self.values[index+1]))]
         times = np.array(self.times)
-        dimension_jump_times = times[dimension_jump_indices]
+        dimension_jump_times = list(times[dimension_jump_indices])
         
         if return_index:
             return dimension_jump_times, dimension_jump_indices
@@ -522,16 +522,19 @@ class FunctionOfVariableDimension():
         Returns:
             non_dimension_jump_times: list
                 The jump times at which there are no dimension jumps.
+            non_dimension_jump_indices: list, optional
+                The indices of the non-dimension jump times, if requested.
         """
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_jump_times, dimension_jump_indices = (
             self.dimension_jump_times(return_index=True))
-        non_dimension_jump_times = jump_times[~np.isin(jump_times,
-                                                       dimension_jump_times)]
+        non_dimension_jump_times = list(np.array(jump_times)
+                                        [~np.isin(jump_times,
+                                                  dimension_jump_times)])
         
         if return_index:
-            non_dimension_jump_indices = jump_indices[~np.isin(
-                jump_indices, dimension_jump_indices)]
+            non_dimension_jump_indices = list(jump_indices[~np.isin(
+                jump_indices, dimension_jump_indices)])
             return non_dimension_jump_times, non_dimension_jump_indices
         else:
             return non_dimension_jump_times
@@ -958,6 +961,615 @@ class FunctionOfVariableDimension():
                                                   self.values + other.values)
             
         return func
+    
+    def __neg__(self):
+        """
+        Negates the values of the function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with negated values.
+        """
+        negative_values = []
+        for value in self.values:
+            negative_values.append(list(-np.array(value)))
+        func = FunctionOfVariableDimension(self.times, negative_values)
+        return func
+    
+    def __add__(self, other):
+        """
+        Adds the values of this function to another value or function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to add to the values of this function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the added values.
+    
+        Raises:
+            ValueError: If dimensions do not match when adding another
+                function or an array.
+        """
+        # If number is added, add it to every value
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) + other)
+            return func
+        # If array is added, add every component to the respective coordinate
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only add list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) + other[:dimension])
+            return func
+        # If another function is added, add function values at every time, if
+        # possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) + np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                + np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __radd__(self, other):
+        """
+        Adds another value or function to the values of this function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to add to the values of this function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the added values.
+        """
+        return self + other
+        
+    def __sub__(self, other):
+        """
+        Subtracts a value or function from the values of this function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to subtract from the values of this
+                function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the subtracted values.
+    
+        Raises:
+            ValueError: If dimensions do not match when subtracting another
+                function or an array.
+        """
+        # If number is subtracted, subtract it from every value
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) - other)
+            return func
+        # If array is subtracted, subtract every component from the respective
+        # coordinate
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) - other[:dimension])
+            return func
+        # If another function is subtracted, subtract function values at every
+        # time, if possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) - np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                - np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __rsub__(self, other):
+        """
+        Subtracts the values of this function from another value.
+    
+        Parameters:
+            other: int, float, or array-like
+                The value from which to subtract the values of this function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the subtracted values.
+        """
+        return -self + other
+        
+    def __mul__(self, other):
+        """
+        Multiplies the values of this function by another value or function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to multiply with the values of this
+                function.
+    
+        Returns:
+            FunctionOfVariableDimension: A new instance of the function with
+                the multiplied values.
+    
+        Raises:
+            ValueError: If dimensions do not match when multiplying by
+                another function or an array.
+        """
+        # If number is multiplied, multiply it with every value
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) * other)
+            return func
+        # If array is multiplied, multiply every component with the respective
+        # coordinate
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) * other[:dimension])
+            return func
+        # If another function is multiplied, multiply function values at every
+        # time, if possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) * np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                * np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __rmul__(self, other):
+        """
+        Multiplies another value with the values of this function.
+    
+        Parameters:
+            other: int, float or array-like
+                The value to multiply with the values of this function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the multiplied values.
+        """
+        return self * other
+    
+    def __truediv__(self, other):
+        """
+        Divides the values of this function by another value or function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to divide the values of this
+                function by.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the divided values.
+    
+        Raises:
+            ValueError: If dimensions do not match when dividing by another
+            function or an array.
+        """
+        # If division by a number, divide every value by it
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) / other)
+            return func
+        # If division by an array, divide every coordinate by the respective
+        # component
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) / other[:dimension])
+            return func
+        # If function is divided by another, divide function values at every
+        # time, if possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) / np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                / np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __rtruediv__(self, other):
+        """
+        Divides another value by the values of this function.
+    
+        Parameters:
+            other: int, float or array-like
+                The value to divide by the values of this function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the divided values.
+        """
+        # If number is divide, divide it by every value
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(other / np.array(value))
+            return func
+        # If array is divided, divide every component by the respective
+        # coordinate
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(other[:dimension] / np.array(value))
+            return func
+        else:
+            return NotImplemented
+        
+    def __mod__(self, other):
+        """
+        Computes the modulus of this function values with other ones.
+        
+        Computes the modulus of the values of this function with another
+        value or function.
+    
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to compute the modulus with.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the modulus values.
+    
+        Raises:
+            ValueError: If dimensions do not match when taking modulus
+                with another function or an array.
+        """
+        # If modulus to number is computed, compute modulus of every value to
+        # it
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) % other)
+            return func
+        # If modulus to array is computed, compute modulus of every coordinate
+        # with respect to the respective component
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) % other[:dimension])
+            return func
+        # If modulus to another funtion is compute, compute modulus of function
+        # values at every time, if possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) % np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                % np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __rmod__(self, other):
+        """
+        Computes the modulus of another value with the function values.
+    
+        Parameters:
+            other: int, float or array-like
+                The value to compute modulus with the values of this
+                function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the modulus values.
+        """
+        # If modulus to number is computed, compute modulus of every value to
+        # it
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(other % np.array(value))
+            return func
+        # If modulus to array is computed, compute modulus of every coordinate
+        # with respect to the respective component
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(other[:dimension] % np.array(value))
+            return func
+        else:
+            return NotImplemented
+        
+    def __pow__(self, other):
+        """
+        Raises the function values to the power of other values.
+    
+        Raises the values of this function to the power of another value
+        or function.
+        
+        Parameters:
+            other: int, float, list, np.ndarray, or
+                FunctionOfVariableDimension
+                The value or function to raise the values of this function
+                to.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the exponentiated values.
+    
+        Raises:
+            ValueError: If dimensions do not match when exponentiating by
+                another function or an array.
+        """
+        # If power to number is computed, compute power of every value to the
+        # number
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(np.array(value) ** other)
+            return func
+        # If function to the power of array is computed, compute power of every
+        # coordinate to the respective component
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(np.array(value) ** other[:dimension])
+            return func
+        # If power to another function is computed, compute powers of function
+        # values at every time, if possible
+        elif isinstance(other, FunctionOfVariableDimension):
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Can only add functions with same minimal '
+                                 'and maximal time')
+            if not (self.dimension(self.times) == other.dimension(self.times)
+                    and self.dimension(other.times) 
+                    == other.dimension(other.times)):
+                raise ValueError('Can only add functions with the same '
+                                 'dimension at each time')
+            times = list(np.unique(self.times + other.times))
+            jump_times = list(np.unique(self.jump_times()
+                                        + other.jump_times()))
+            values = [list(np.array(self(time)) + np.array(other(time)))
+                      for time in times]
+            left_limits = [list(np.array(self.left_limit(jump_time))
+                                + np.array(other.left_limit(jump_time)))
+                           for jump_time in jump_times]
+            func = FunctionOfVariableDimension(jump_times + times,
+                                               left_limits + values)
+            return func
+        else:
+            return NotImplemented
+        
+    def __rpow__(self, other):
+        """
+        Raises another value to the power of the values of this function.
+    
+        Parameters:
+            other: int, float or array-like
+                The value to raise to the powers of the values of this
+                function.
+    
+        Returns:
+            func: FunctionOfVariableDimension
+                A new instance of the function with the exponentiated values.
+        """
+        # If power to number is computed, compute power of number to every
+        # value
+        if isinstance(other, (int, float, np.int16, np.int32, np.int64, 
+                              np.float16, np.float32, np.float64)):
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                func.values[i] = list(other ** np.array(value))
+            return func
+        # If array to the power of function is computed, compute power of every
+        # component to the respective coordinate
+        elif isinstance(other, (list, np.ndarray)):
+            array_length = len(other)
+            for value in other:
+                if not isinstance(value, (int, float, np.int16, np.int32,
+                                          np.int64, np.float16, np.float32,
+                                          np.float64)):
+                    raise ValueError('Can only subtract list/array of numbers')
+            func = FunctionOfVariableDimension(self.times, self.values)
+            for i, value in enumerate(func.values):
+                dimension = len(value)
+                if array_length < dimension:
+                    raise ValueError('Array must be at least of length of '
+                                     f'maximal dimension. Dimension of {value}'
+                                     f'at time {func.times[i]} is {dimension}.'
+                                     )
+                func.values[i] = list(other[:dimension] ** np.array(value))
+            return func
+        else:
+            return NotImplemented
     
     
 class StatsFunctionsOfVariableDimension():
@@ -1769,6 +2381,14 @@ if __name__ == '__main__':
     func.add_values(t_values, x_values)
     func.delete_values(4, [6])
     func.plot_coordinates()
+    func = -func
+    func.plot_coordinates()
+    func = func + 10
+    func.plot_coordinates()
+    func = func * 2
+    func.plot_coordinates()
+    func = 1 / func
+    func.plot_coordinates()
     times = [0, 1, 1, 1, 2, 2, 4]
     values = [[0], [1], [1], [.5, .5], [1.5, 2.5], [4], [6]]
     func = FunctionOfVariableDimension(times, values)
@@ -1784,8 +2404,11 @@ if __name__ == '__main__':
     
     func_conc = func.concatenate(func_2)
     
+    func_test = func + func_new
+    
     func.plot_coordinates()
     func_new.plot_coordinates()
+    func_test.plot_coordinates()
     func_2.plot_coordinates()
     func_conc.plot_coordinates()
     
