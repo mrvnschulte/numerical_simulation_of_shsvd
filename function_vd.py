@@ -864,16 +864,18 @@ class FunctionOfVariableDimension():
     
     def left_limit(self, t):
         """
-        Returns the left limit of the function at a given time.
+        Returns the left limit(s) of the function at given time(s).
 
         Parameters:
-            t: float
-                The time at which to evaluate the left limit.
+            t: float or array-like
+                The time(s) at which to evaluate the left limit(s).
         
         Returns:
-            value: The value of the left limit.
+            value: The value(s) of the left limit(s).
         """
-        if t in self.jump_times():
+        if isinstance(t, (list, np.ndarray)):
+            value = [self.left_limit(time) for time in t]
+        elif t in self.jump_times():
             value = self.values[self.times.index(t)]
         else:
             value = self(t)
@@ -886,11 +888,11 @@ class FunctionOfVariableDimension():
         dimension.
 
         Parameters:
-            other: function_of_variable_dimension
+            other: FunctionOfVariableDimension
                 The function to concatenate with.
         
         Returns:
-            func: function_of_variable_dimension
+            func: FunctionOfVariableDimension
                 The concatenated function.
         
         Raises:
@@ -1570,6 +1572,261 @@ class FunctionOfVariableDimension():
             return func
         else:
             return NotImplemented
+        
+    def __eq__(self, other):
+        """
+        Compare this function with another one for equality.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the functions are equal, False otherwise.
+        """
+        if not isinstance(other, FunctionOfVariableDimension):
+            return False
+        else:
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                return False
+            elif not (self.dimension(self.times) == other.dimension(self.times) 
+                      and self.dimension(other.times) 
+                      == other.dimension(other.times)):
+                return False
+            else:
+                bool1 = all([np.all(np.array(value1) == np.array(value2))
+                             for value1, value2 in zip(self(self.times),
+                                                       other(self.times))])
+                bool2 = all([np.all(np.array(value1) == np.array(value2))
+                             for value1, value2 in zip(self(other.times),
+                                                       other(other.times))])
+                bool3 = all([np.all(np.array(value1) == np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(self.jump_times()),
+                                    other.left_limit(self.jump_times()))])
+                bool4 = all([np.all(np.array(value1) == np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(other.jump_times()),
+                                    other.left_limit(other.jump_times()))])
+                return (bool1 and bool2 and bool3 and bool4)
+            
+    def __ne__(self, other):
+        """
+        Compare this function with another one for inequality.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the functions are not equal, False otherwise.
+        """
+        return (not self == other)
+    
+    def __gt__(self, other):
+        """
+        Compare this function with another one for being greater.
+        
+        Compare this function with another one for being greater at all
+        times and in every coordinate.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the coordinate values of this function are greater
+                than the other ones, False otherwise.
+
+        Raises:
+            ValueError: If the functions have different time ranges or
+                dimensions.
+        """
+        if not isinstance(other, FunctionOfVariableDimension):
+            return NotImplemented
+        else:
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Cannot compare functions with minimal times '
+                                 f'{self.minimal_time()} and '
+                                 f'{other.minimal_time()} and maximal times'
+                                 f'{self.maximal_time()} and '
+                                 f'{other.maximal_time()}')
+            elif not (self.dimension(self.times) == other.dimension(self.times) 
+                      and self.dimension(other.times) 
+                      == other.dimension(other.times)):
+                raise ValueError('Can only compare functions of the same '
+                                 'dimension at each time')
+            else:
+                bool1 = all([np.all(np.array(value1) > np.array(value2))
+                             for value1, value2 in zip(self(self.times),
+                                                       other(self.times))])
+                bool2 = all([np.all(np.array(value1) > np.array(value2))
+                             for value1, value2 in zip(self(other.times),
+                                                       other(other.times))])
+                bool3 = all([np.all(np.array(value1) > np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(self.jump_times()),
+                                    other.left_limit(self.jump_times()))])
+                bool4 = all([np.all(np.array(value1) > np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(other.jump_times()),
+                                    other.left_limit(other.jump_times()))])
+                return (bool1 and bool2 and bool3 and bool4)
+            
+    def __lt__(self, other):
+        """
+        Compare this function with another one for being less.
+
+        Compare this function with another one for being less at all
+        times and in every coordinate.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the coordinate values of this function are less
+                than the other ones, False otherwise.
+
+        Raises:
+            ValueError: If the functions have different time ranges or
+                dimensions.
+        """
+        if not isinstance(other, FunctionOfVariableDimension):
+            return NotImplemented
+        else:
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Cannot compare functions with minimal times '
+                                 f'{self.minimal_time()} and '
+                                 f'{other.minimal_time()} and maximal times'
+                                 f'{self.maximal_time()} and '
+                                 f'{other.maximal_time()}')
+            elif not (self.dimension(self.times) == other.dimension(self.times) 
+                      and self.dimension(other.times) 
+                      == other.dimension(other.times)):
+                raise ValueError('Can only compare functions of the same '
+                                 'dimension at each time')
+            else:
+                bool1 = all([np.all(np.array(value1) < np.array(value2))
+                             for value1, value2 in zip(self(self.times),
+                                                       other(self.times))])
+                bool2 = all([np.all(np.array(value1) < np.array(value2))
+                             for value1, value2 in zip(self(other.times),
+                                                       other(other.times))])
+                bool3 = all([np.all(np.array(value1) < np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(self.jump_times()),
+                                    other.left_limit(self.jump_times()))])
+                bool4 = all([np.all(np.array(value1) < np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(other.jump_times()),
+                                    other.left_limit(other.jump_times()))])
+                return (bool1 and bool2 and bool3 and bool4)
+            
+    def __ge__(self, other):
+        """
+        Compare this function with another one for being greater or equal.
+
+        Compare this function with another one for being greater or equal
+        at all times and in every coordinate.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the coordinate values of this function are greater
+                than or equal to the other ones, False otherwise.
+
+        Raises:
+            ValueError: If the functions have different time ranges or
+                dimensions.
+        """
+        if not isinstance(other, FunctionOfVariableDimension):
+            return NotImplemented
+        else:
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Cannot compare functions with minimal times '
+                                 f'{self.minimal_time()} and '
+                                 f'{other.minimal_time()} and maximal times'
+                                 f'{self.maximal_time()} and '
+                                 f'{other.maximal_time()}')
+            elif not (self.dimension(self.times) == other.dimension(self.times) 
+                      and self.dimension(other.times) 
+                      == other.dimension(other.times)):
+                raise ValueError('Can only compare functions of the same '
+                                 'dimension at each time')
+            else:
+                bool1 = all([np.all(np.array(value1) >= np.array(value2))
+                             for value1, value2 in zip(self(self.times),
+                                                       other(self.times))])
+                bool2 = all([np.all(np.array(value1) >= np.array(value2))
+                             for value1, value2 in zip(self(other.times),
+                                                       other(other.times))])
+                bool3 = all([np.all(np.array(value1) >= np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(self.jump_times()),
+                                    other.left_limit(self.jump_times()))])
+                bool4 = all([np.all(np.array(value1) >= np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(other.jump_times()),
+                                    other.left_limit(other.jump_times()))])
+                return (bool1 and bool2 and bool3 and bool4)
+            
+    def __le__(self, other):
+        """
+        Compare this function with another one for being less or equal.
+
+        Compare this function with another one for being less or equal
+        at all times and in every coordinate.
+
+        Parameters:
+            other: FunctionOfVariableDimension
+                The function to compare with.
+
+        Returns:
+            bool: True if the coordinate values of this function are less
+                than or equal to the other ones, False otherwise.
+
+        Raises:
+            ValueError: If the functions have different time ranges or
+                dimensions.
+        """
+        if not isinstance(other, FunctionOfVariableDimension):
+            return NotImplemented
+        else:
+            if not (self.minimal_time() == other.minimal_time()
+                    and self.maximal_time() == other.maximal_time()):
+                raise ValueError('Cannot compare functions with minimal times '
+                                 f'{self.minimal_time()} and '
+                                 f'{other.minimal_time()} and maximal times'
+                                 f'{self.maximal_time()} and '
+                                 f'{other.maximal_time()}')
+            elif not (self.dimension(self.times) == other.dimension(self.times) 
+                      and self.dimension(other.times) 
+                      == other.dimension(other.times)):
+                raise ValueError('Can only compare functions of the same '
+                                 'dimension at each time')
+            else:
+                bool1 = all([np.all(np.array(value1) <= np.array(value2))
+                             for value1, value2 in zip(self(self.times),
+                                                       other(self.times))])
+                bool2 = all([np.all(np.array(value1) <= np.array(value2))
+                             for value1, value2 in zip(self(other.times),
+                                                       other(other.times))])
+                bool3 = all([np.all(np.array(value1) <= np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(self.jump_times()),
+                                    other.left_limit(self.jump_times()))])
+                bool4 = all([np.all(np.array(value1) <= np.array(value2))
+                             for value1, value2
+                             in zip(self.left_limit(other.jump_times()),
+                                    other.left_limit(other.jump_times()))])
+                return (bool1 and bool2 and bool3 and bool4)
     
     
 class StatsFunctionsOfVariableDimension():
@@ -1671,7 +1928,7 @@ class StatsFunctionsOfVariableDimension():
         Adds a function to the statistics collector for evaluation.
 
         Parameters:
-            func: function_of_variable_dimension
+            func: FunctionOfVariableDimension
                 The function to add and evaluate.
         
         Raises:
@@ -2437,3 +2694,8 @@ if __name__ == '__main__':
     plt.xlim(0, 2.5)
     plt.savefig('cadlag_function.png')
     plt.show()
+    print(func.left_limit([1, 2]))
+    func2 = FunctionOfVariableDimension(times, values)
+    print(func == func2)
+    func3 = func2 + 1
+    print(func3 == func)
