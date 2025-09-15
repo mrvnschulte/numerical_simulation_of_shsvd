@@ -1,6 +1,3 @@
 __pycache__/*
 *.jpg
-build/*
-source/*
-Makefile
-make.bat
+docs/*

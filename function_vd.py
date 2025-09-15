@@ -9,6 +9,7 @@ import numpy as np
 import bisect
 import matplotlib.pyplot as plt
 import scipy.linalg as la
+from collections import Counter
 
 class FunctionOfVariableDimension():
     """
@@ -1839,18 +1840,19 @@ class StatsFunctionsOfVariableDimension():
         times: A list of time points for evaluations.
         order: A list of orders for norms to be computed.
         norm_means: Means of the norms for each order over time.
-        norm_variances: Variances of the norms for each order over time.
+        norm_variances: Sample variances of the norms for each order 
+            over time.
         norm_m2: Sum of squared differences of the norms for each order
             over time.
         dimension_means: Means of the dimensions over time.
-        dimension_variances: Variances of the dimensions over time.
+        dimension_variances: Sample variances of the dimensions over time.
         dimension_m2: Sum of squared differences of the dimension for each
             order over time.
         custom_evaluation_functions: List of user-provided functions to
             evaluate.
         cef_means: Means of the custom evaluation functions over time.
-        cef_variances: Variances of the custom evaluation functions over
-            time.
+        cef_variances: Sample variances of the custom evaluation functions
+            over time.
         cef_m2: Sum of squared differences of the custom evaluation
             functions over time.
         collect_jump_times: Indicates whether jump times are stored.
@@ -1887,7 +1889,7 @@ class StatsFunctionsOfVariableDimension():
         decimal_places = (len(str(stepsize).split('.')[1])
                           if '.' in str(stepsize) else 0)
         if t_eval is not None:
-            self.times = self.__partial_t_eval__(t_eval, t0, tf)
+            self.times = self._partial_t_eval(t_eval, t0, tf)
         else:
             self.times = np.round(np.arange(t0, tf, stepsize), decimal_places)
         if not np.isclose(self.times[-1], tf):
@@ -1943,7 +1945,11 @@ class StatsFunctionsOfVariableDimension():
             raise ValueError(f'{func} has values between {func.times[0]} and\
                              {func.times[-1]} but they need to be at least \
                                  between {self.times[0]} and {self.times[-1]}')
-            
+        
+        if self.evaluated_functions == 0:
+            self.cef_means = np.array(self.cef_means)
+            self.cef_variances = np.array(self.cef_variances)
+            self.cef_m2 = np.array(self.cef_m2)
         self.evaluated_functions += 1
         
         values = func(self.times)
@@ -2317,7 +2323,8 @@ class StatsFunctionsOfVariableDimension():
             if len(jump_times)>0:
                 inter_jump_times[i][0] = jump_times[0]
                 if len(jump_times)>1:
-                    inter_jump_times[i][1:] = jump_times[1:] - jump_times[:-1]
+                    inter_jump_times[i][1:] = (np.array(jump_times[1:]) 
+                                               - np.array(jump_times[:-1]))
             
         if not number:
             max_jumps = max(len(jump_times) for jump_times in self.jump_times)
@@ -2575,9 +2582,386 @@ class StatsFunctionsOfVariableDimension():
                                     * (interp_values[1] - interp_values[0]))
         
         return value
+    
+    def __add__(self, other):
+        """
+        Adds two instances of StatsFunctionsOfVariableDimension together.
+        
+        This method combines the statistics of two 
+        `StatsFunctionsOfVariableDimension` objects, ensuring that the time 
+        points, norm orders, and other attributes are compatible. It 
+        computes the combined means and variances for norms and dimensions,
+        as well as for custom evaluation functions.
+        
+        Parameters:
+            other: StatsFunctionsOfVariableDimension
+                The statistics object to add to this instance.
+        
+        Returns:
+            StatsFunctionsOfVariableDimension
+                A new instance containing the combined statistics.
+        
+        Raises:
+            ValueError: If the time points, norm orders, custom evaluation
+                functions, or jump time collection settings do not match
+                between the two instances being added.
+        """
+        if not isinstance(other, StatsFunctionsOfVariableDimension):
+            return NotImplemented
+        if not np.all(self.times == other.times):
+            raise ValueError('Can only add statistics with same times')
+        if not (sorted(self.order) == sorted(other.order)):
+            raise ValueError('Can only add statistics with same stored '
+                             'norm orders')
+        if not (len(self.custom_evaluation_functions) 
+                == len(other.custom_evaluation_functions)):
+            raise ValueError('Can only add statistics with same custom '
+                             'evaluation functions')
+        if not (self.collect_jump_times == other.collect_jump_times):
+            raise ValueError('Can only add statistics with both collecting'
+                             'jump times or none')
+        if not (self.collect_dimension_jump_times 
+                == other.collect_dimension_jump_times):
+            raise ValueError('Can only add statistics with both collecting'
+                             'dimension jump times or none')
+        print('Warning: Please ensure that custom evaluation functions are the'
+              ' same and in the same order. This cannot be tested.')
+        # Initialize new stats object
+        stats = StatsFunctionsOfVariableDimension(
+            (self.times[0], self.times[-1]))
+        stats.evaluated_functions = (self.evaluated_functions
+                                     + other.evaluated_functions)
+        stats.times = self.times
+        stats.order = self.order
+        stats.custom_evaluation_functions = self.custom_evaluation_functions
+        stats.collect_jump_times = self.collect_jump_times
+        stats.collect_dimension_jump_times = self.collect_dimension_jump_times
+        
+        # If norm orders are the same, but not in the same order, resort
+        if self.order == other.order:
+            other_norm_means = other.norm_means
+            other_norm_m2 = other.norm_m2
+        else:
+            other_order = other.order
+            other_norm_means = np.empty_like(other.norm_means)
+            other_norm_m2 = np.empty_like(other.norm_m2)
+            
+            for i, order_value in enumerate(self.order):
+                index = np.where(other_order == order_value)[0][0]
+                other_norm_means[i] = other.norm_means[index]
+                other_norm_m2[i] = other.norm_m2[index]
 
+        # Compute combined means and variances
+        stats.norm_means, stats.norm_m2 = self._add_means_and_m2(
+            self.norm_means, other_norm_means, self.norm_m2, other_norm_m2,
+            self.evaluated_functions, other.evaluated_functions)
+        stats.norm_variances = stats.norm_m2 / stats.evaluated_functions
+        
+        stats.dimension_means, stats.dimension_m2 = self._add_means_and_m2(
+            self.dimension_means, other.dimension_means, self.dimension_m2, 
+            other.dimension_m2, self.evaluated_functions,
+            other.evaluated_functions)
+        stats.dimension_variances = (stats.dimension_m2 
+                                     / stats.evaluated_functions)
+        
+        stats.cef_means, stats.cef_m2 = self._add_means_and_m2(
+            self.cef_means, other.cef_means, self.cef_m2, other.cef_m2, 
+            self.evaluated_functions, other.evaluated_functions)
+        stats.cef_variances = stats.cef_m2 / stats.evaluated_functions
+        
+        # Combine jump times, if collected
+        if stats.collect_jump_times:
+            stats.jump_times = self.jump_times + other.jump_times
+        if stats.collect_dimension_jump_times:
+            stats.dimension_jump_times = (self.dimension_jump_times
+                                          + other.dimension_jump_times)
+            
+        return stats
+    
+    def __sub__(self, other):
+        """
+        Subtracts another instance of StatsFunctionsOfVariableDimension.
+    
+        This method computes the difference between two
+        `StatsFunctionsOfVariableDimension` objects in the sense of removing
+        the functions of the subtracted `StatsFunctionsOfVariableDimension`
+        object, ensuring that the time points, norm orders, and other 
+        attributes are compatible. It calculates the resulting means and 
+        variances for norms and dimensions, as well as for custom evaluation 
+        functions.
+    
+        Parameters:
+            other: StatsFunctionsOfVariableDimension
+                The statistics object to subtract from this instance.
+    
+        Returns:
+            StatsFunctionsOfVariableDimension
+                A new instance containing the resulting statistics after
+                subtraction.
+    
+        Raises:
+            ValueError: If the time points, norm orders, custom evaluation
+                functions, or jump time collection settings do not match
+                between the two instances being subtracted.
+        """
+        if not isinstance(other, StatsFunctionsOfVariableDimension):
+            return NotImplemented
+        if not np.all(self.times == other.times):
+            raise ValueError('Can only subtract statistics with the same '
+                             'times')
+        if not (sorted(self.order) == sorted(other.order)):
+            raise ValueError('Can only subtract statistics with the same '
+                             'stored norm orders')
+        if not (len(self.custom_evaluation_functions) 
+                == len(other.custom_evaluation_functions)):
+            raise ValueError('Can only subtract statistics with the same '
+                             'custom evaluation functions')
+        if not (self.collect_jump_times == other.collect_jump_times):
+            raise ValueError('Can only subtract statistics with both '
+                             'collecting jump times or none')
+        if not (self.collect_dimension_jump_times 
+                == other.collect_dimension_jump_times):
+            raise ValueError('Can only subtract statistics with both '
+                             'collecting dimension jump times or none')
+        if not (self.evaluated_functions >= other.evaluated_functions):
+            raise ValueError('Can only subtract statistics when functions '
+                             'added to the subtrahend are a subset of those '
+                             'added to the minuend. In particular, the number '
+                             'of evaluated functions must be less or equal '
+                             'for the subtrahend')
+        print('Warning: Please ensure that the functions added to the '
+              'subtrahend are a subset of those added to the minuend. This '
+              'cannot be tested.')
+        # Initialize new stats object
+        stats = StatsFunctionsOfVariableDimension(
+            (self.times[0], self.times[-1]))
+        stats.evaluated_functions = (self.evaluated_functions
+                                     - other.evaluated_functions)
+        stats.times = self.times
+        stats.order = self.order
+        stats.custom_evaluation_functions = self.custom_evaluation_functions
+        stats.collect_jump_times = self.collect_jump_times
+        stats.collect_dimension_jump_times = self.collect_dimension_jump_times
+        
+        # If norm orders are the same, but not in the same order, resort
+        if self.order == other.order:
+            other_norm_means = other.norm_means
+            other_norm_m2 = other.norm_m2
+        else:
+            other_order = other.order
+            other_norm_means = np.empty_like(other.norm_means)
+            other_norm_m2 = np.empty_like(other.norm_m2)
+            
+            for i, order_value in enumerate(self.order):
+                index = np.where(other_order == order_value)[0][0]
+                other_norm_means[i] = other.norm_means[index]
+                other_norm_m2[i] = other.norm_m2[index]
+    
+        # Compute subtracted means and variances
+        stats.norm_means, stats.norm_m2 = self._subtract_means_and_m2(
+            self.norm_means, other_norm_means, self.norm_m2, other_norm_m2,
+            self.evaluated_functions, other.evaluated_functions)
+        stats.norm_variances = stats.norm_m2 / stats.evaluated_functions
+        
+        stats.dimension_means, stats.dimension_m2 = (
+            self._subtract_means_and_m2(self.dimension_means, 
+                                        other.dimension_means,
+                                        self.dimension_m2, other.dimension_m2,
+                                        self.evaluated_functions,
+                                        other.evaluated_functions))
+        stats.dimension_variances = (stats.dimension_m2 
+                                     / stats.evaluated_functions)
+        
+        stats.cef_means, stats.cef_m2 = self._subtract_means_and_m2(
+            self.cef_means, other.cef_means, self.cef_m2, other.cef_m2, 
+            self.evaluated_functions, other.evaluated_functions)
+        stats.cef_variances = stats.cef_m2 / stats.evaluated_functions
+        
+        # Reduce jump times, if collected
+        if stats.collect_jump_times:
+            if not self.is_sublist(other.jump_times, self.jump_times):
+                raise ValueError('Jump times of subtrahend are not part of '
+                                 'the jump times of the minuend. Please '
+                                 'ensure that the functions added to the '
+                                 'subtrahend are a subset of those added to '
+                                 'the minuend.')
+            stats.jump_times = self.list_difference(other.jump_times,
+                                                    self.jump_times)
+        if stats.collect_dimension_jump_times:
+            if not self.is_sublist(other.dimension_jump_times,
+                                   self.dimension_jump_times):
+                raise ValueError('Dimension jump times of subtrahend are not '
+                                 'part of the jump times of the minuend. '
+                                 'Please ensure that the functions added to '
+                                 'the subtrahend are a subset of those added '
+                                 'to the minuend.')
+            stats.dimension_jump_times = self.list_difference(
+                other.dimension_jump_times, self.dimension_jump_times)
+            
+        return stats
+    
+    def __eq__(self, other):
+        """
+        Compare this statistics object with another for equality.
+
+        Compares the attributes of this instance with those of another
+        `StatsFunctionsOfVariableDimension` instance, excluding the 
+        `custom_evaluation_functions`.
+
+        Parameters:
+            other: StatsFunctionsOfVariableDimension
+                The statistics object to compare with.
+
+        Returns:
+            bool: True if the statistics objects are equal, False otherwise.
+        """
+        if not isinstance(other, StatsFunctionsOfVariableDimension):
+            return NotImplemented
+        
+        self_attributes = vars(self)
+        other_attributes = vars(other)
+        
+        return all(np.all(self_attributes[key] == other_attributes[key])
+                   for key in self_attributes
+                   if key != 'custom_evaluation_functions')
+    
+    def __ne__(self, other):
+        """
+        Compare this statistics object with another for inequality.
+
+        Compares the attributes of this instance with those of another
+        `StatsFunctionsOfVariableDimension` instance, excluding the 
+        `custom_evaluation_functions`.
+
+        Parameters:
+            other: StatsFunctionsOfVariableDimension
+                The statistics object to compare with.
+
+        Returns:
+            bool: True if the statistics objects are not equal, False
+            otherwise.
+        """
+        return not (self == other)
+        
     @staticmethod
-    def __partial_t_eval__(t_eval, t0, tf):
+    def _add_means_and_m2(means_x, means_y, m2_x, m2_y, n, m):
+        '''
+        Add means and second moments of variable with n and m realizations.
+
+        Parameters
+        ----------
+        means_x : np.ndarray
+            The means of the first variable.
+        means_y : np.ndarray
+            The means of the second variable.
+        m2_x : np.ndarray
+            The second moments of the first variable.
+        m2_y : np.ndarray
+            The second moments of the second variable.
+        n : int
+            The number of realizations of the first variable.
+        m : int
+            The number of realizations of the second variable.
+
+        Returns
+        -------
+        means : np.ndarray
+            The added means.
+        m2 : np.ndarray
+            The added second moments.
+        '''
+        means = (n * means_x + m * means_y) / (n + m)
+        m2 = m2_x + m2_y + n * m * (means_x - means_y) ** 2 / (n + m)
+        
+        return means, m2
+    
+    @staticmethod
+    def _subtract_means_and_m2(means_xy, means_y, m2_xy, m2_y, n, m):
+        '''
+        Subtract means and 2nd moments of variable with n and m realizations.
+
+        Parameters
+        ----------
+        means_xy : np.ndarray
+            The means of the minuend variable.
+        means_y : np.ndarray
+            The means of the substrahend variable.
+        m2_xy : np.ndarray
+            The second moments of the minuend variable.
+        m2_y : np.ndarray
+            The second moments of the subtrahend variable.
+        n : int
+            The number of realizations of the minuend variable.
+        m : int
+            The number of realizations of the subtrahend variable.
+
+        Returns
+        -------
+        means : np.ndarray
+            The subtracted means.
+        m2 : np.ndarray
+            The subtracted second moments.
+        '''
+        means = ((n + m) * means_xy - m * means_y) / n
+        m2 = m2_xy - m2_y - n * m * (means - means_y) ** 2 / (n + m)
+        
+        return means, m2
+    
+    @staticmethod
+    def is_sublist(list1, list2):
+        '''
+        Checks if list1 is a sublist of list2.
+
+        Parameters
+        ----------
+        list1 : list of lists
+            List that should be checked for being a sublist of list2.
+        list2 : list of lists
+            List that should be checked for list1 being a sublist of it.
+
+        Returns
+        -------
+        bool: True, if list1 is a sublist of list2.
+        '''
+        counter1 = Counter(map(tuple, list1))
+        counter2 = Counter(map(tuple, list2))
+        
+        return all(counter1[item] <= counter2[item] for item in counter1)
+    
+    @staticmethod
+    def list_difference(list1, list2):
+        """
+        Remove list1 from list2 if it is a sublist.
+    
+        Parameters:
+            list1: list of lists
+                List that contains the elements to be removed.
+            list2: list of lists
+                List where the elements from list1 should be removed from.
+    
+        Returns:
+            result: list
+                List that contains all elements in list2, but not in list1,
+                accounting for multiple entrances.
+                
+        Raises:
+            ValueError: If list1 is not a sublist of list2.
+        """
+        if not StatsFunctionsOfVariableDimension.is_sublist(list1, list2):
+            raise ValueError(f'{list1} is not a sublist of {list2}')
+        
+        counter1 = Counter(map(tuple, list1))
+        counter2 = Counter(map(tuple, list2))
+        
+        result = []
+        for item in counter2:
+            count_difference = counter2[item] - counter1[item]
+            result.extend([list(item)] * count_difference)
+        
+        return result
+        
+    @staticmethod
+    def _partial_t_eval(t_eval, t0, tf):
         """
         Reduces t_eval to values between t0 and tf.
         

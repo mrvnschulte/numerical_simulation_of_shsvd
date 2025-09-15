@@ -9,7 +9,7 @@ from scipy.integrate import solve_ivp
 import numpy as np
 from function_vd import (FunctionOfVariableDimension,
                          StatsFunctionsOfVariableDimension)
-from random import random
+from random import random, seed
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
@@ -119,7 +119,7 @@ def solve_hsvd(flow_function, initial_value, t_span, jump_times=None,
     while tf < end_time:
         # Solve IVP with current initial value until next jump time or the jump
         # set is reached
-        t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
+        t_eval_partial = _partial_t_eval(t_eval, t0, tf)
         y = solve_ivp(flow_function, (t0, tf), initial_value,
                       t_eval=t_eval_partial, events=jump_set_function,
                       method=solve_ivp_method, **solve_ivp_options)
@@ -154,7 +154,7 @@ def solve_hsvd(flow_function, initial_value, t_span, jump_times=None,
                 tf = min(end_time, jump_times[0])
         
     # Solve IVP until final time
-    t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
+    t_eval_partial = _partial_t_eval(t_eval, t0, tf)
     y = solve_ivp(flow_function, (t0, tf), initial_value,
                   t_eval=t_eval_partial, events=jump_set_function,
                   method=solve_ivp_method, **solve_ivp_options)
@@ -172,7 +172,7 @@ def solve_hsvd(flow_function, initial_value, t_span, jump_times=None,
                 func.add_values(t0, y_jump)
 
 
-            t_eval_partial = __partial_t_eval__(t_eval, t0, tf)
+            t_eval_partial = _partial_t_eval(t_eval, t0, tf)
             y = solve_ivp(flow_function, (t0, tf), initial_value,
                           t_eval=t_eval_partial, events=jump_set_function,
                           method=solve_ivp_method, **solve_ivp_options)
@@ -605,7 +605,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
         if verbose and (it+1) % verbose_step == 0:
             print(f'Sample path {it+1}')
         # Get previous values for convergence check
-        if convergence_estimate is not None and it>=min_iterations:
+        if convergence_estimate is not None and (it+1) >= min_iterations:
             old_convergence_values = []
             for i, ce in enumerate(convergence_estimate):
                 old_convergence_values.append(deepcopy(getattr(
@@ -637,7 +637,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
                                       **solve_ivp_options)
         stats.add_function(func)
         
-        if convergence_estimate is not None and it>=min_iterations:
+        if convergence_estimate is not None and (it+1) >= min_iterations:
             # Get new values for convergence checks
             new_convergence_values = []
             for i, ce in enumerate(convergence_estimate):
@@ -711,7 +711,7 @@ def solve_shsvd(flow_function, jump_rate_function, transition_function,
 
     return stats
 
-def __partial_t_eval__(t_eval, t0, tf):
+def _partial_t_eval(t_eval, t0, tf):
     """
     Prepares the evaluation times by filtering them within a specified range.
 
@@ -1060,6 +1060,7 @@ if __name__ == '__main__':
     # plt.tight_layout()
     # plt.savefig('Harmonic_oscillator_hold_and_push.png')
     
+    seed(42)
     oscillator = solve_shsvd_single_run(harmonic_oscillator,
                                         ho_jump_rate_function,
                                         ho_transition_function_2, y0, t_span,
@@ -1069,6 +1070,7 @@ if __name__ == '__main__':
                                         t_eval=t_eval)
     oscillator.plot_coordinates()
     print(oscillator.norm([1, 10, 50, 100]))
+    # seed(42)
     oscillator_stats = solve_shsvd(harmonic_oscillator, ho_jump_rate_function,
                                    ho_transition_function_2, y0, t_span,
                                    jump_rate_bound, t_eval=t_eval,
@@ -1083,8 +1085,36 @@ if __name__ == '__main__':
                                                          ('norm', 2)],
                                    convergence_estimate_type=['max', 'mean'],
                                    estimation_mode='sum',
-                                   max_iterations=500, tol=5e-3, verbose=True,
+                                   max_iterations=500, tol=1e-3, verbose=True,
                                    verbose_step=10)
     oscillator_stats.plot_norm()
     oscillator_stats.plot_jump_times()
     oscillator_stats.plot_inter_jump_times()
+    
+    # seed(42)
+    oscillator_stats_2 = solve_shsvd(harmonic_oscillator, ho_jump_rate_function,
+                                   ho_transition_function_2, y0, t_span,
+                                   jump_rate_bound, t_eval=t_eval,
+                                   jump_times=jump_times, norm_order=[1, 2],
+                                   collect_jump_times=True, flow_args=(a, b),
+                                   transition_args=transition_args,
+                                   iterations=50,
+                                   custom_evaluation_functions=
+                                   [ho_energy, ho_first_coordinate],
+                                   cef_args=[(2, ), None],
+                                   convergence_estimate=[('norm', 2),
+                                                         ('norm', 2)],
+                                   convergence_estimate_type=['max', 'mean'],
+                                   estimation_mode='sum',
+                                   max_iterations=500, tol=1e-3, verbose=True,
+                                   verbose_step=10)
+    oscillator_stats_2.plot_norm()
+    oscillator_stats_2.plot_jump_times()
+    oscillator_stats_2.plot_inter_jump_times()
+    
+    combined_oscillator_stats = oscillator_stats + oscillator_stats_2
+    combined_oscillator_stats.plot_norm()
+    combined_oscillator_stats.plot_jump_times()
+    combined_oscillator_stats.plot_inter_jump_times()
+    
+    # print(oscillator_stats == oscillator_stats_2)
