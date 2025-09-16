@@ -5,7 +5,7 @@ Created on Tue Mar 18 14:40:18 2025
 @author: schulte
 """
 
-from solve_shsvd import solve_shsvd
+from numerical_simulation_of_shsvd import solve_shsvd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm
@@ -173,7 +173,7 @@ gamma = .1
 t_span = (0, 500)
 beta = .15
 mutation_rate = .2
-sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=5000, custom_evaluation_functions=[total_infectious])
+sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=500, custom_evaluation_functions=[total_infectious])
 fig = sir_mutation_stats.plot_cefs()
 
 plt.figure(fig)

@@ -7,7 +7,7 @@ Created on Tue Jan 14 16:15:51 2025
 
 from scipy.integrate import solve_ivp
 import numpy as np
-from function_vd import (FunctionOfVariableDimension,
+from .function_vd import (FunctionOfVariableDimension,
                          StatsFunctionsOfVariableDimension)
 from random import random, seed
 import matplotlib.pyplot as plt

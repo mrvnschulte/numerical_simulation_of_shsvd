@@ -11,30 +11,31 @@ import matplotlib.pyplot as plt
 import scipy.linalg as la
 from collections import Counter
 
+
 class FunctionOfVariableDimension():
     """
     A class for functions of variable dimension.
-    
-    A class to represent a function of variable dimension defined by 
+
+    A class to represent a function of variable dimension defined by
     time-value pairs.
-    
+
     Attributes:
-        times: list
+        times : list
             A list of time points of the function.
-        values: list
+        values : list
             A list of corresponding values at the given time points.
     """
-    
+
     def __init__(self, times=None, values=None):
         """
         Initializes the function with given times and values.
-        
+
         Parameters:
-            times: float, list or array-like, optional
+            times : float, list or array-like, optional
                 A sequence of time points.
-            values: float, list or array-like, optional
+            values : float, list or array-like, optional
                 A sequence of values corresponding to the times.
-        
+
         Raises:
             ValueError: If times and values are not the same length or not
             array-like.
@@ -42,11 +43,11 @@ class FunctionOfVariableDimension():
         if times is None and values is None:
             self.times = []
             self.values = []
-            
+
         else:
             times = self._convert_to_list(times)
             values = self._convert_to_list(values)
-            
+
             # Check if initialisation is meaningful
             if not (isinstance(times, (list, np.ndarray)) and
                     isinstance(values, (list, np.ndarray))):
@@ -60,9 +61,9 @@ class FunctionOfVariableDimension():
                 else:
                     raise ValueError(f'{value} in values is not array-like \
                                      nor can it be converted')
-            
+
             times, values = self._delete_double_values(times, values,
-                                                      initialisation=True)
+                                                       initialisation=True)
             
             self.times = times
             self.values = values
@@ -308,7 +309,7 @@ class FunctionOfVariableDimension():
                 multiple values and/or indices are provided.
         """
         # If nothing is provided, delete the last time-value pair
-        if times == None and values == None and indices == None:
+        if times is None and values is None and indices is None:
             del self.times[-1]
             del self.values[-1]
             
