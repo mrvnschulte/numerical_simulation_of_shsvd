@@ -1,35 +1,35 @@
 # Numerical Simulation of SHSVD
 
-## Beschreibung
-Dieses Modul bietet Funktionen zur Simulation stochastischer hybrider Systeme mit variabler Dimension. Es umfasst die Implementierung von Funktionen zur Integration und Analyse von Systemdynamiken sowie zur Erfassung statistischer Daten.
+## Description
+This module provides functions for simulating stochastic hybrid systems with variable dimensions. It includes the implementation of functions for integrating and analyzing system dynamics, as well as capturing statistical data.
 
 ## Installation
 
-Um das Modul lokal zu installieren, führen Sie den folgenden Befehl im Hauptverzeichnis aus:
+To install the module locally, run the following command in the main directory:
 pip install .
 
-## Nutzung
+## Usage
 
-TO-DO: Beispiel einfügen
+TO-DO: Insert example
 
-## Abhängigkeiten
+## Dependencies
 
 - numpy
 - scipy
 - matplotlib
 
-## Lizenz
+## License
 
-TO-DO: Gedanken darüber machen
+TO-DO: Think about it
 
-## Autoren
+## Authors
 
 - Marvin Schulte (https://gitlab.itwm.fhg.de/schulte/)
 
-## Beiträge
+## Contributions
 
-Beiträge sind willkommen! Bitte öffnen Sie ein Issue oder einen Pull Request auf GitLab.
+Contributions are welcome! Please open an issue or a pull request on GitLab.
 
-## Kontakt
+## Contact
 
-Wenn Sie Fragen haben, können Sie mich unter marvin.schulte@itwm.fraunhofer.de(mailto:marvin.schulte@itwm.fraunhofer.de) erreichen.
+If you have any questions, you can reach me at marvin.schulte@itwm.fraunhofer.de (mailto:marvin.schulte@itwm.fraunhofer.de).
