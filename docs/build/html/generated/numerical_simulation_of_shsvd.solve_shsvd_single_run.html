@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>numerical_simulation_of_shsvd.solve_shsvd_single_run &#8212; Numerical Simulation of SHSVD 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=2709fde1"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="numerical-simulation-of-shsvd-solve-shsvd-single-run">
+<h1>numerical_simulation_of_shsvd.solve_shsvd_single_run<a class="headerlink" href="#numerical-simulation-of-shsvd-solve-shsvd-single-run" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="numerical_simulation_of_shsvd.solve_shsvd_single_run">
+<span class="sig-prename descclassname"><span class="pre">numerical_simulation_of_shsvd.</span></span><span class="sig-name descname"><span class="pre">solve_shsvd_single_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flow_function</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_rate_function</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition_function</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_span</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_rate_bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_times</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_eval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_rate_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_jump_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solve_ivp_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RK45'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">solve_ivp_options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#numerical_simulation_of_shsvd.solve_shsvd_single_run" title="Link to this definition">¶</a></dt>
+<dd><p>Executes a single run of the stochastic hybrid system dynamics.</p>
+<p>This function runs the integration of the system defined by the
+flow_function as well as forced transitions while computing an execution
+of the random variable given by the jump_rate_function and transitions
+specified by transition_function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>flow_function</strong> (<em>callable</em>) – The function that defines the flow of the system.</p></li>
+<li><p><strong>jump_rate_function</strong> (<em>callable</em>) – The function that defines the jump rate of the system.</p></li>
+<li><p><strong>transition_function</strong> (<em>callable</em>) – The function that defines the transition behavior.</p></li>
+<li><p><strong>initial_value</strong> (<em>array-like</em>) – The initial state of the system.</p></li>
+<li><p><strong>t_span</strong> (<em>tuple</em>) – A tuple specifying the start and end times for integration.</p></li>
+<li><p><strong>jump_rate_bound</strong> (<em>float</em><em>, </em><em>optional</em>) – The upper bound of the jump rate. If none is provided, it will be
+estimated during simulation.</p></li>
+<li><p><strong>jump_times</strong> (<em>list</em><em>, </em><em>optional</em>) – A list of times at which jumps occur.</p></li>
+<li><p><strong>jump_time_transition_function</strong> (<em>callable</em><em>, </em><em>optional</em>) – A function that defines the transition at jump occurrences. It is
+set to transition_function if jump_times are given, but no
+jump_time_transition_function.</p></li>
+<li><p><strong>jump_set_function</strong> (<em>callable</em><em>, </em><em>optional</em>) – A function that defines the conditions for a jump to occur.</p></li>
+<li><p><strong>jump_set_transition_function</strong> (<em>callable</em><em>, </em><em>optional</em>) – A function that defines the transition behavior for jump sets. It
+isbset to transition_function if a jump_set_function is given, but
+no jump_time_transition_function.</p></li>
+<li><p><strong>t_eval</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Specific times at which to store the computed solution.</p></li>
+<li><p><strong>flow_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the flow_function.</p></li>
+<li><p><strong>jump_rate_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_rate_function.</p></li>
+<li><p><strong>transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the transition_function.</p></li>
+<li><p><strong>jump_time_transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_time_transition_function.</p></li>
+<li><p><strong>jump_set_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_set_function.</p></li>
+<li><p><strong>jump_set_transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_set_transition_function.</p></li>
+<li><p><strong>check_jump_rate</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, check if jump_rate_bound was violated in each step.
+Automatically set to True, if no jump_rate_bound is provided.</p></li>
+<li><p><strong>solve_ivp_method</strong> (<em>str</em><em>, </em><em>optional</em>) – The method to use for solving the initial value problem (default is
+‘RK45’).</p></li>
+<li><p><strong>solve_ivp_options</strong> (<em>keyword arguments</em><em>, </em><em>optional</em>) – Additional options for the solve_ivp function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>FunctionOfVariableDimension</dt><dd><p>An object containing the time and value data of the system after
+integration during this single run.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>func</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Numerical Simulation of SHSVD</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="numerical_simulation_of_shsvd.html">numerical_simulation_of_shsvd</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Marvin Schulte.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.3.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/generated/numerical_simulation_of_shsvd.solve_shsvd_single_run.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

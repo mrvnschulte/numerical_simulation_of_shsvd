@@ -1,0 +1,7 @@
+API
+===
+
+.. autosummary::
+   :toctree: generated
+
+   numerical_simulation_of_shsvd

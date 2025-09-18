@@ -1,0 +1,6 @@
+﻿numerical\_simulation\_of\_shsvd.solve\_shsvd\_single\_run
+==========================================================
+
+.. currentmodule:: numerical_simulation_of_shsvd
+
+.. autofunction:: solve_shsvd_single_run
