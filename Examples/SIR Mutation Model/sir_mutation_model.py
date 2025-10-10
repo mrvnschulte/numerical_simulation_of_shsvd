@@ -29,6 +29,23 @@ def sir_model(t, x, beta=.15, gamma=.1):
         
     return dx
 
+def sir_model_with_seasonality(t, x, beta=lambda x : .15, gamma=.1):
+    
+    n = int(len(x)/3)
+    
+    dx = []
+    for j in range(n):
+        s, i, r = x[3*j:3*j+3]
+        ds = -beta(t) * s * i
+        di = beta(t) * s * i - gamma * i
+        dr = gamma * i
+        dx.append(ds)
+        dx.append(di)
+        dx.append(dr)
+        
+    return dx
+
+
 
 def total_infectious(x):
     
@@ -99,6 +116,38 @@ def active_variants(x):
         return variants
     
 
+def beta_seasonal(t, beta0=.15, ampl=.5, phase_shift=0):
+    
+    beta = beta0 * (1 + ampl * np.sin(2*np.pi*t/100) + phase_shift)
+    
+    return beta
+
+
+def extinction_function(t, x, extinction_threshold=.0009):
+    
+    i = x[1]
+    
+    return i - extinction_threshold
+
+def extinction_transition(t, x):
+    
+    # x[1] = 0
+    
+    # return x
+    if len(x)>3:
+        return x[3:]
+    else:
+        x[1] = 0
+        return x
+
+def infectious_with_first_variant(x):
+    
+    if isinstance(x[0], (list, np.ndarray)):
+        i_1 = [infectious_with_first_variant(y) for y in x]
+        return i_1
+    else:        
+        i_1 = x[1]
+        return i_1
 
 x0 = [.999, .001, 0]
 t_span = (0, 1000)
@@ -173,7 +222,10 @@ gamma = .1
 t_span = (0, 500)
 beta = .15
 mutation_rate = .2
-sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=500, custom_evaluation_functions=[total_infectious])
+sir_mutation_stats = solve_shsvd(sir_model_with_seasonality, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta_seasonal, gamma), jump_rate_args=(mutation_rate, ), iterations=50, custom_evaluation_functions=[total_infectious, infectious_with_first_variant],
+                                 jump_set_function=extinction_function,
+                                 jump_set_transition_function=
+                                 extinction_transition)
 fig = sir_mutation_stats.plot_cefs()
 
 plt.figure(fig)

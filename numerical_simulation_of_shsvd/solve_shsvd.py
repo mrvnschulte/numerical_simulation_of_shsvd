@@ -19,6 +19,8 @@ def solve_hsvd(
     jump_set_transition_function=None,
     t_eval=None,
     flow_args=None,
+    flow_args_transition_function=None,
+    flow_args_transition_args=None,
     jump_time_transition_args=None,
     jump_set_args=None,
     jump_set_transition_args=None,
@@ -54,6 +56,10 @@ def solve_hsvd(
             Specific times at which to store the computed solution.
         flow_args : tuple, optional
             Additional arguments to pass to the flow_function.
+        flow_args_transition_function : callable, optional
+            Function that specifies the flow_args after a jump.
+        flow_args_transition_args : tuple, optional
+            Additional arguments to pass to the flow_args_transition_function.
         jump_time_transition_args : tuple, optional
             Additional arguments to pass to the jump_time_transition_function.
         jump_set_args : tuple, optional
@@ -80,8 +86,9 @@ def solve_hsvd(
     """
     # Set additional arguments in functions
     if flow_args is not None:
+        original_flow_function = flow_function
 
-        def flow_function(t, y, fun=flow_function):
+        def flow_function(t, y, fun=original_flow_function):
             return fun(t, y, *flow_args)
 
     if jump_time_transition_function is not None:
@@ -138,6 +145,30 @@ def solve_hsvd(
         tf = end_time
 
     func = FunctionOfVariableDimension()
+    
+    if t0 == tf:
+        # Set new flow_args after jump, if necessary
+        if (
+            flow_args is not None
+            and flow_args_transition_function is not None
+        ):
+            if flow_args_transition_args is not None:
+                flow_args = flow_args_transition_function(
+                    t0, initial_value, *flow_args, 
+                    *flow_args_transition_args
+                )
+            else:
+                flow_args = flow_args_transition_function(
+                    t0, initial_value, *flow_args
+                )
+            if flow_args_transition_function.returns_new_transition_args:
+                flow_args, flow_args_transition_args = flow_args
+        initial_value = jump_time_transition_function(t0, initial_value)
+        del jump_times[0]
+        if len(jump_times) == 0:
+            tf = end_time
+        else:
+            tf = min(end_time, jump_times[0])
 
     while tf < end_time:
         # Solve IVP with current initial value until next jump time or the jump
@@ -173,6 +204,25 @@ def solve_hsvd(
                     tf = end_time
                 else:
                     tf = min(end_time, jump_times[0])
+            # Set new flow_args after jump, if necessary
+            if (
+                flow_args is not None
+                and flow_args_transition_function is not None
+            ):
+                if flow_args_transition_args is not None:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args, 
+                        *flow_args_transition_args
+                    )
+                else:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args
+                    )
+                if flow_args_transition_function.returns_new_transition_args:
+                    flow_args, flow_args_transition_args = flow_args
+
+                def flow_function(t, y, fun=original_flow_function):
+                    return fun(t, y, *flow_args)
 
         else:
             initial_value = jump_time_transition_function(y.t[-1], y.y.T[-1])
@@ -182,6 +232,25 @@ def solve_hsvd(
                 tf = end_time
             else:
                 tf = min(end_time, jump_times[0])
+            # Set new flow_args after jump, if necessary
+            if (
+                flow_args is not None
+                and flow_args_transition_function is not None
+            ):
+                if flow_args_transition_args is not None:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args, 
+                        *flow_args_transition_args
+                    )
+                else:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args
+                    )
+                if flow_args_transition_function.returns_new_transition_args:
+                    flow_args, flow_args_transition_args = flow_args
+
+                def flow_function(t, y, fun=original_flow_function):
+                    return fun(t, y, *flow_args)
 
     # Solve IVP until final time
     t_eval_partial = _partial_t_eval(t_eval, t0, tf)
@@ -218,6 +287,25 @@ def solve_hsvd(
                 **solve_ivp_options,
             )
             func.add_values(y.t, y.y.T)
+            # Set new flow_args after jump, if necessary
+            if (
+                flow_args is not None
+                and flow_args_transition_function is not None
+            ):
+                if flow_args_transition_args is not None:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args, 
+                        *flow_args_transition_args
+                    )
+                else:
+                    flow_args = flow_args_transition_function(
+                        y.t[-1], y.y.T[-1], *flow_args
+                    )
+                if flow_args_transition_function.returns_new_transition_args:
+                    flow_args, flow_args_transition_args = flow_args
+
+                def flow_function(t, y, fun=original_flow_function):
+                    return fun(t, y, *flow_args)
 
     return func
 
