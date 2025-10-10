@@ -98,7 +98,7 @@ def new_flow_args(t, x, old_beta, old_gamma, old_sigma, beta=.18, gamma=.1,
     sigma = np.array(sigma)
     sigma_new = np.zeros((n + 1, n + 1))  # Initialisiere eine (n+1)x(n+1) Matrix mit Nullen
 
-# Fülle die Matrix
+    # Fülle die Matrix
     sigma_new[:n, :n] = old_sigma  # Fülle die obere linke n x n Matrix
     sigma_new[:n, n] = sigma  # Füge sigma als letzte Spalte hinzu
     sigma_new[n, :n] = sigma.T  # Füge sigma als letzte Zeile hinzu
@@ -141,17 +141,23 @@ def multi_variant_model_with_total_infections(t, x, beta, gamma, sigma, n):
     
     return dx
 
-def new_variant_transition_function_with_total_infections(t, x, sigma=.5,
-                                                          variants=1):
+def new_variant_transition_function_with_total_infections(
+        t, x, beta_new=.18, gamma_new=.1, sigma_new=[.5], old_beta=[.1],
+        old_gamma=[.1], old_sigma=[[1]], variants=1
+    ):
     # Attention: Works only for two variants after jump
-    
-    n = x[-1]
-    x = x[:-1].copy()
+    new_flow_args = new_flow_args_with_total_infections(t, x, old_beta,
+                                                        old_gamma, old_sigma,
+                                                        variants)
+
+    n = x[-variants:].copy()
+    x = x[:-variants].copy()
     
     infectious_with_new_variant = np.zeros_like(x)
     infectious_with_new_variant[-1] = min(.001, x[-1])
     x[-1] = max(x[-1]-.001, 0)
 
+    sigma = sigma_new[0]
     protected_against_new_variant = sigma * x
     not_protected_against_new_variant = (1 - sigma) * x
     
@@ -169,11 +175,11 @@ def new_variant_transition_function_with_total_infections(t, x, sigma=.5,
     new_I = np.block([[A, B], [zero_matrix, C]])
     
     x = map_I_to_x(new_I)
-    n_new = [n, infectious_with_new_variant[-1]]
+    n_new = np.append(n, infectious_with_new_variant[-1])
     
     x = np.append(x, n_new)
     
-    return x
+    return x, new_flow_args
 
 def new_flow_args_with_total_infections(t, x, old_beta, old_gamma, old_sigma,
                                         old_n, beta=.18, gamma=.1, sigma=[.5]):
@@ -184,14 +190,13 @@ def new_flow_args_with_total_infections(t, x, old_beta, old_gamma, old_sigma,
     sigma = np.array(sigma)
     sigma_new = np.zeros((n + 1, n + 1))  # Initialisiere eine (n+1)x(n+1) Matrix mit Nullen
 
-# Fülle die Matrix
+    # Fülle die Matrix
     sigma_new[:n, :n] = old_sigma  # Fülle die obere linke n x n Matrix
     sigma_new[:n, n] = sigma  # Füge sigma als letzte Spalte hinzu
     sigma_new[n, :n] = sigma.T  # Füge sigma als letzte Zeile hinzu
     sigma_new[n, n] = 1  # Setze die untere rechte Ecke auf 1
     
-    return ((beta_new, gamma_new, sigma_new, old_n+1),
-            (beta, gamma, np.append(sigma, sigma[-1])))
+    return (beta_new, gamma_new, sigma_new, old_n+1)
 
 def map_x_to_I(x):
     '''
@@ -750,7 +755,14 @@ plt.xlabel(r'Time of mutation')
 plt.show()
 
 sigma_new = [.5]
-new_flow_args_with_total_infections.returns_new_transition_args = True
+new_variant_transition_function_with_total_infections.returns_flow_args = True
+
+def jump_set_function(t, x):
+    if len(x) < 5:
+        return x[-1] - .2
+    else:
+        return x[-2] - .199
+
 func = solve_hsvd(multi_variant_model_with_total_infections, x0,
                   (t0, tf),
                   t_eval=t_eval,
@@ -758,10 +770,6 @@ func = solve_hsvd(multi_variant_model_with_total_infections, x0,
                   jump_time_transition_function=
                   new_variant_transition_function_with_total_infections,
                   flow_args=(beta, gamma, sigma, 1),
-                  flow_args_transition_function=
-                  new_flow_args_with_total_infections,
-                  flow_args_transition_args=(beta_new, gamma_new,
-                                             sigma_new),
-                  jump_time_transition_args=(sigma_new[0], 1))
+                  jump_time_transition_args=(beta_new, gamma_new, sigma_new))
 func.plot_coordinates(labels=['s', 'r1', 'i1', 'r2', 'i2', 'r12', 'i1,12',
                               'i2,12', 'i12', 'n1', 'n2'])
