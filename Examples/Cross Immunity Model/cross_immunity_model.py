@@ -9,7 +9,8 @@ from scipy.integrate import solve_ivp
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from numerical_simulation_of_shsvd import solve_hsvd
+from numerical_simulation_of_shsvd import (solve_hsvd, solve_shsvd_single_run,
+                                           solve_shsvd)
 
 def two_variant_model(t, x, beta1, beta2, sigma, gamma1=.1, gamma2=.1):
     
@@ -143,7 +144,7 @@ def multi_variant_model_with_total_infections(t, x, beta, gamma, sigma, n):
 
 def new_variant_transition_function_with_total_infections(
         t, x, beta_new=.18, gamma_new=.1, sigma_new=[.5], old_beta=[.1],
-        old_gamma=[.1], old_sigma=[[1]], variants=1
+        old_gamma=[.1], old_sigma=[[1]], variants=1, jump_rate_bound=.1
     ):
     # Attention: Works only for two variants after jump
     new_flow_args = new_flow_args_with_total_infections(t, x, old_beta,
@@ -152,6 +153,7 @@ def new_variant_transition_function_with_total_infections(
 
     n = x[-variants:].copy()
     x = x[:-variants].copy()
+    x = np.array(x)
     
     infectious_with_new_variant = np.zeros_like(x)
     infectious_with_new_variant[-1] = min(.001, x[-1])
@@ -179,7 +181,7 @@ def new_variant_transition_function_with_total_infections(
     
     x = np.append(x, n_new)
     
-    return x, new_flow_args
+    return x, new_flow_args, 1e-10
 
 def new_flow_args_with_total_infections(t, x, old_beta, old_gamma, old_sigma,
                                         old_n, beta=.18, gamma=.1, sigma=[.5]):
@@ -197,6 +199,16 @@ def new_flow_args_with_total_infections(t, x, old_beta, old_gamma, old_sigma,
     sigma_new[n, n] = 1  # Setze die untere rechte Ecke auf 1
     
     return (beta_new, gamma_new, sigma_new, old_n+1)
+
+def total_infections(x):
+    if isinstance(x[0], (list, np.ndarray)):
+        infections = [total_infections(y) for y in x]
+        return infections
+    else:
+        infections = x[-1]
+        if len(x)>5:
+            infections += x[-2]
+    return infections
 
 def map_x_to_I(x):
     '''
@@ -714,54 +726,63 @@ else:
 
 c = plt.pcolormesh(delays, cross_immunities, final_infections_1)
 plt.colorbar(c, label='Final number of infections with variant 1')
-plt.title(r'Final number of infections with variant 1 ($R_0^1=1.5, \gamma_1=\gamma_2=0.1$)')
+plt.title('Final number of infections with variant 1\n' r'($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 c = plt.pcolormesh(delays, cross_immunities, final_infections_2)
 plt.colorbar(c, label='Final number of infections with variant 2')
-plt.title(r'Final number of infections with variant 2 ($R_0^1=1.5, \gamma_1=\gamma_2=0.1$)')
+plt.title('Final number of infections with variant 2\n' r'($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 c = plt.pcolormesh(delays, cross_immunities, final_infections_1 + final_infections_2)
 plt.colorbar(c, label='Final number of infections')
-plt.title(r'Final number of infections($R_0^1$=1.5, $\gamma_1=\gamma_2=0.1$)')
+plt.title(r'Final number of infections ($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 c = plt.contourf(delays, cross_immunities, final_infections_1)
 plt.colorbar(c, label='Final number of infections with variant 1')
-plt.title(r'Final number of infections with variant 1 ($R_0^1=1.5, \gamma_1=\gamma_2=0.1$)')
+plt.title('Final number of infections with variant 1\n' r'($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 c = plt.contourf(delays, cross_immunities, final_infections_2)
 plt.colorbar(c, label='Final number of infections with variant 2')
-plt.title(r'Final number of infections with variant 2 ($R_0^1=1.5, \gamma_1=\gamma_2=0.1$)')
+plt.title('Final number of infections with variant 2\n' r'($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 c = plt.contourf(delays, cross_immunities, final_infections_1 + final_infections_2)
 plt.colorbar(c, label='Final number of infections')
-plt.title(r'Final number of infections($R_0^1$=1.5, $\gamma_1=\gamma_2=0.1$)')
+plt.title(r'Final number of infections ($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
 plt.ylabel(r'Cross-immunity $\sigma$')
 plt.xlabel(r'Time of mutation')
 plt.show()
 
 sigma_new = [.5]
 new_variant_transition_function_with_total_infections.returns_flow_args = True
+new_variant_transition_function_with_total_infections.returns_jump_rate_bound = True
 
 def jump_set_function(t, x):
     if len(x) < 5:
         return x[-1] - .2
     else:
         return x[-2] - .199
+    
+def jump_rate_function(t, x, m=.1):
+    if len(x)<5:
+        return m * x[2]
+    else:
+        return 0
+    
+mutation_rate = .1
 
 func = solve_hsvd(multi_variant_model_with_total_infections, x0,
                   (t0, tf),
@@ -773,3 +794,38 @@ func = solve_hsvd(multi_variant_model_with_total_infections, x0,
                   jump_time_transition_args=(beta_new, gamma_new, sigma_new))
 func.plot_coordinates(labels=['s', 'r1', 'i1', 'r2', 'i2', 'r12', 'i1,12',
                               'i2,12', 'i12', 'n1', 'n2'])
+func = solve_shsvd_single_run(
+    multi_variant_model_with_total_infections, 
+    jump_rate_function,
+    new_variant_transition_function_with_total_infections,
+    x0,
+    (t0, tf),
+    jump_rate_bound=mutation_rate,
+    t_eval=t_eval,
+    #jump_times=[100],
+    jump_time_transition_function=
+    new_variant_transition_function_with_total_infections,
+    flow_args=(beta, gamma, sigma, 1),
+    jump_time_transition_args=(beta_new, gamma_new, sigma_new),
+    jump_rate_args=(mutation_rate,))
+func.plot_coordinates(labels=['s', 'r1', 'i1', 'r2', 'i2', 'r12', 'i1,12',
+                              'i2,12', 'i12', 'n1', 'n2'])
+
+# stats = solve_shsvd(
+#     multi_variant_model_with_total_infections, 
+#     jump_rate_function,
+#     new_variant_transition_function_with_total_infections,
+#     x0,
+#     (t0, tf),
+#     jump_rate_bound=mutation_rate,
+#     t_eval=t_eval,
+#     #jump_times=[100],
+#     jump_time_transition_function=
+#     new_variant_transition_function_with_total_infections,
+#     flow_args=(beta, gamma, sigma, 1),
+#     jump_time_transition_args=(beta_new, gamma_new, sigma_new),
+#     jump_rate_args=(mutation_rate,),
+#     tol=1e-2,
+#     min_iterations=20,
+#     convergence_estimate=('cef', 0),
+#     )

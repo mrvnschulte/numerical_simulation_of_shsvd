@@ -23,6 +23,10 @@ def solve_hsvd(
     jump_time_transition_args=None,
     jump_set_args=None,
     jump_set_transition_args=None,
+    jump_rate_args=None,
+    transition_args=None,
+    jump_rate_bound=None,
+    return_args=False,
     solve_ivp_method="RK45",
     **solve_ivp_options,
 ):
@@ -61,6 +65,21 @@ def solve_hsvd(
             Additional arguments to pass to the jump_set_function.
         jump_set_transition_args : tuple, optional
             Additional arguments to pass to the jump_set_transition_function.
+        jump_rate_args : tuple, optional
+            Additional arguments to pass to the jump_rate_function in
+            solve_shsvd_single_run, which might change during jumps. Should
+            not be provided when calling solve_hsvd directly.
+        transition_args : tuple, optional
+            Additional arguments to pass to the transition_function in
+            solve_shsvd_single_run, which might change during jumps. Should
+            not be provided when calling solve_hsvd directly.
+        jump_rate_bound : float, optional
+            The upper bound of the jump rate in solve_shsvd_single_run, which
+            might change during jumps. Should not be provided when calling
+            solve_hsvd directly.
+        return_args : bool, optional
+            If True, all additional arguments are returned. This option is
+            mainly for calls of the method inside solve_shsvd_single_run.
         solve_ivp_method : str, optional
             The method to use for solving the initial value problem
             (default is 'RK45').
@@ -72,6 +91,24 @@ def solve_hsvd(
         func : FunctionOfVariableDimension
             An object containing the time and value data of the system after
             integration.
+        flow_args : tuple, optional
+            Additional arguments to pass to the flow_function. Only returned if
+            return_args is True.
+        jump_rate_args : tuple, optional
+            Additional arguments to pass to the jump_rate_function. Only
+            returned if return_args is True.
+        transition_args : tuple, optional
+            Additional arguments to pass to the transition_function. Only
+            returned if return_args is True.
+        jump_time_transition_args : tuple, optional
+            Additional arguments to pass to the jump_time_transition_function.
+            Only returned if return_args is True.
+        jump_set_args : tuple, optional
+            Additional arguments to pass to the jump_set_function. Only
+            returned if return_args is True.
+        jump_set_transition_args : tuple, optional
+            Additional arguments to pass to the jump_set_transition_function.
+            Only returned if return_args is True.
 
     Raises
     ------
@@ -81,42 +118,46 @@ def solve_hsvd(
     """
     # Set additional arguments in functions
     if flow_args is not None:
+
         @wraps(flow_function)
         def flow_function(t, y, fun=flow_function):
             return fun(t, y, *flow_args)
 
     if jump_time_transition_function is not None:
-        if not hasattr(jump_time_transition_function, 'returns_flow_args'):
-            jump_time_transition_function.returns_flow_args = False
-        if not hasattr(jump_time_transition_function,
-                       'returns_jump_time_transition_args'):
-            jump_time_transition_function.returns_jump_time_transition_args = False
-        if not hasattr(jump_time_transition_function, 'returns_jump_set_args'):
-            jump_time_transition_function.returns_jump_set_args = False
-        if not hasattr(jump_time_transition_function,
-                       'returns_jump_set_transition_args'):
-            jump_time_transition_function.returns_jump_set_transition_args = False
+        _add_attributes(jump_time_transition_function)
+
         @wraps(jump_time_transition_function)
         def jump_time_transition_function(
-                t, y, fun=jump_time_transition_function
-            ):
+            t, y, fun=jump_time_transition_function
+        ):
             args = _stack_args(
-                'time', flow_args, jump_time_transition_args, jump_set_args,
+                "time",
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
                 jump_set_transition_args,
-                jump_time_transition_function.returns_flow_args,
-                jump_time_transition_function.returns_jump_time_transition_args,
-                jump_time_transition_function.returns_jump_set_args,
-                jump_time_transition_function.returns_jump_set_transition_args)
+                jump_rate_bound,
+                fun.returns_flow_args,
+                fun.returns_jump_rate_args,
+                fun.returns_transition_args,
+                fun.returns_jump_time_transition_args,
+                fun.returns_jump_set_args,
+                fun.returns_jump_set_transition_args,
+                fun.returns_jump_rate_bound,
+            )
             return fun(t, y, *args)
 
     elif jump_times is not None:
         raise ValueError(
-            "Jump time transition function must be given if jump times are  \
+            "Jump time transition function must be given if jump times are \
                 not None"
         )
 
     if jump_set_function is not None:
         if jump_set_args is not None:
+
             @wraps(jump_set_function)
             def jump_set_function(t, y, fun=jump_set_function):
                 return fun(t, y, *jump_set_args)
@@ -133,27 +174,29 @@ def solve_hsvd(
                                  if jump set is not None"
                 )
         else:
-            if not hasattr(jump_set_transition_function, 'returns_flow_args'):
-                jump_set_transition_function.returns_flow_args = False
-            if not hasattr(jump_set_transition_function,
-                           'returns_jump_time_transition_args'):
-                jump_set_transition_function.returns_jump_time_transition_args = False
-            if not hasattr(jump_set_transition_function, 'returns_jump_set_args'):
-                jump_set_transition_function.returns_jump_set_args = False
-            if not hasattr(jump_set_transition_function,
-                           'returns_jump_set_transition_args'):
-                jump_set_transition_function.returns_jump_set_transition_args = False
+            _add_attributes(jump_set_transition_function)
+
             @wraps(jump_set_transition_function)
             def jump_set_transition_function(
                 t, y, fun=jump_set_transition_function
             ):
                 args = _stack_args(
-                    'set', flow_args, jump_time_transition_args, jump_set_args,
+                    "set",
+                    flow_args,
+                    jump_rate_args,
+                    transition_args,
+                    jump_time_transition_args,
+                    jump_set_args,
                     jump_set_transition_args,
-                    jump_set_transition_function.returns_flow_args,
-                    jump_set_transition_function.returns_jump_time_transition_args,
-                    jump_set_transition_function.returns_jump_set_args,
-                    jump_set_transition_function.returns_jump_set_transition_args)
+                    jump_rate_bound,
+                    fun.returns_flow_args,
+                    fun.returns_jump_rate_args,
+                    fun.returns_transition_args,
+                    fun.returns_jump_time_transition_args,
+                    fun.returns_jump_set_args,
+                    fun.returns_jump_set_transition_args,
+                    fun.returns_jump_rate_bound,
+                )
                 return fun(t, y, *args)
 
     # Initialise solution function
@@ -172,17 +215,36 @@ def solve_hsvd(
         tf = end_time
 
     func = FunctionOfVariableDimension()
-    
+
+    # Treat special case of jump at beginning
     if t0 == tf:
         values_after_jump = jump_time_transition_function(t0, initial_value)
-        (initial_value, flow_args, jump_time_transition_args, jump_set_args,
-         jump_set_transition_args) = _assign_args(
-             values_after_jump, flow_args, jump_time_transition_args,
-             jump_set_args, jump_set_transition_args,
-             jump_time_transition_function.returns_flow_args,
-             jump_time_transition_function.returns_jump_time_transition_args,
-             jump_time_transition_function.returns_jump_set_args,
-             jump_time_transition_function.returns_jump_set_transition_args)
+        (
+            initial_value,
+            flow_args,
+            jump_rate_args,
+            transition_args,
+            jump_time_transition_args,
+            jump_set_args,
+            jump_set_transition_args,
+            jump_rate_bound,
+        ) = _assign_args(
+            values_after_jump,
+            flow_args,
+            jump_rate_args,
+            transition_args,
+            jump_time_transition_args,
+            jump_set_args,
+            jump_set_transition_args,
+            jump_rate_bound,
+            jump_time_transition_function.returns_flow_args,
+            jump_time_transition_function.returns_jump_rate_args,
+            jump_time_transition_function.returns_transition_args,
+            jump_time_transition_function.returns_jump_time_transition_args,
+            jump_time_transition_function.returns_jump_set_args,
+            jump_time_transition_function.returns_jump_set_transition_args,
+            jump_time_transition_function.returns_jump_rate_bound,
+        )
         del jump_times[0]
         if len(jump_times) == 0:
             tf = end_time
@@ -211,28 +273,64 @@ def solve_hsvd(
                 t0 = y.t_events[0][0]
                 y_jump = y.y_events[0][0]
                 values_after_jump = jump_set_transition_function(t0, y_jump)
-                (initial_value, flow_args, jump_time_transition_args, jump_set_args,
-                 jump_set_transition_args) = _assign_args(
-                     values_after_jump, flow_args, jump_time_transition_args,
-                     jump_set_args, jump_set_transition_args,
-                     jump_set_transition_function.returns_flow_args,
-                     jump_set_transition_function.returns_jump_time_transition_args,
-                     jump_set_transition_function.returns_jump_set_args,
-                     jump_set_transition_function.returns_jump_set_transition_args)
+                (
+                    initial_value,
+                    flow_args,
+                    jump_rate_args,
+                    transition_args,
+                    jump_time_transition_args,
+                    jump_set_args,
+                    jump_set_transition_args,
+                    jump_rate_bound,
+                ) = _assign_args(
+                    values_after_jump,
+                    flow_args,
+                    jump_rate_args,
+                    transition_args,
+                    jump_time_transition_args,
+                    jump_set_args,
+                    jump_set_transition_args,
+                    jump_rate_bound,
+                    jump_set_transition_function.returns_flow_args,
+                    jump_set_transition_function.returns_jump_rate_args,
+                    jump_set_transition_function.returns_transition_args,
+                    jump_set_transition_function.returns_jump_time_transition_args,
+                    jump_set_transition_function.returns_jump_set_args,
+                    jump_set_transition_function.returns_jump_set_transition_args,
+                    jump_set_transition_function.returns_jump_rate_bound,
+                )
                 if t0 not in y.t:
                     func.add_values(t0, y_jump)
             else:
                 values_after_jump = jump_time_transition_function(
                     y.t[-1], y.y.T[-1]
                 )
-                (initial_value, flow_args, jump_time_transition_args, jump_set_args,
-                 jump_set_transition_args) = _assign_args(
-                     values_after_jump, flow_args, jump_time_transition_args,
-                     jump_set_args, jump_set_transition_args,
-                     jump_time_transition_function.returns_flow_args,
-                     jump_time_transition_function.returns_jump_time_transition_args,
-                     jump_time_transition_function.returns_jump_set_args,
-                     jump_time_transition_function.returns_jump_set_transition_args)
+                (
+                    initial_value,
+                    flow_args,
+                    jump_rate_args,
+                    transition_args,
+                    jump_time_transition_args,
+                    jump_set_args,
+                    jump_set_transition_args,
+                    jump_rate_bound,
+                ) = _assign_args(
+                    values_after_jump,
+                    flow_args,
+                    jump_rate_args,
+                    transition_args,
+                    jump_time_transition_args,
+                    jump_set_args,
+                    jump_set_transition_args,
+                    jump_rate_bound,
+                    jump_time_transition_function.returns_flow_args,
+                    jump_time_transition_function.returns_jump_rate_args,
+                    jump_time_transition_function.returns_transition_args,
+                    jump_time_transition_function.returns_jump_time_transition_args,
+                    jump_time_transition_function.returns_jump_set_args,
+                    jump_time_transition_function.returns_jump_set_transition_args,
+                    jump_time_transition_function.returns_jump_rate_bound,
+                )
 
                 t0 = tf
                 del jump_times[0]
@@ -242,21 +340,41 @@ def solve_hsvd(
                     tf = min(end_time, jump_times[0])
 
         else:
-            values_after_jump = jump_time_transition_function(y.t[-1], y.y.T[-1])
+            values_after_jump = jump_time_transition_function(
+                y.t[-1], y.y.T[-1]
+            )
+            (
+                initial_value,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+            ) = _assign_args(
+                values_after_jump,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+                jump_time_transition_function.returns_flow_args,
+                jump_time_transition_function.returns_jump_rate_args,
+                jump_time_transition_function.returns_transition_args,
+                jump_time_transition_function.returns_jump_time_transition_args,
+                jump_time_transition_function.returns_jump_set_args,
+                jump_time_transition_function.returns_jump_set_transition_args,
+                jump_time_transition_function.returns_jump_rate_bound,
+            )
             t0 = tf
             del jump_times[0]
             if len(jump_times) == 0:
                 tf = end_time
             else:
                 tf = min(end_time, jump_times[0])
-            (initial_value, flow_args, jump_time_transition_args, jump_set_args,
-             jump_set_transition_args) = _assign_args(
-                 values_after_jump, flow_args, jump_time_transition_args,
-                 jump_set_args, jump_set_transition_args,
-                 jump_time_transition_function.returns_flow_args,
-                 jump_time_transition_function.returns_jump_time_transition_args,
-                 jump_time_transition_function.returns_jump_set_args,
-                 jump_time_transition_function.returns_jump_set_transition_args)
 
     # Solve IVP until final time
     t_eval_partial = _partial_t_eval(t_eval, t0, tf)
@@ -279,14 +397,32 @@ def solve_hsvd(
             t0 = y.t_events[0][0]
             y_jump = y.y_events[0][0]
             values_after_jump = jump_set_transition_function(t0, y_jump)
-            (initial_value, flow_args, jump_time_transition_args, jump_set_args,
-             jump_set_transition_args) = _assign_args(
-                 values_after_jump, flow_args, jump_time_transition_args,
-                 jump_set_args, jump_set_transition_args,
-                 jump_set_transition_function.returns_flow_args,
-                 jump_set_transition_function.returns_jump_time_transition_args,
-                 jump_set_transition_function.returns_jump_set_args,
-                 jump_set_transition_function.returns_jump_set_transition_args)
+            (
+                initial_value,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+            ) = _assign_args(
+                values_after_jump,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+                jump_set_transition_function.returns_flow_args,
+                jump_set_transition_function.returns_jump_rate_args,
+                jump_set_transition_function.returns_transition_args,
+                jump_set_transition_function.returns_jump_time_transition_args,
+                jump_set_transition_function.returns_jump_set_args,
+                jump_set_transition_function.returns_jump_set_transition_args,
+                jump_set_transition_function.returns_jump_rate_bound,
+            )
             if t0 not in y.t:
                 func.add_values(t0, y_jump)
 
@@ -302,7 +438,19 @@ def solve_hsvd(
             )
             func.add_values(y.t, y.y.T)
 
-    return func
+    if return_args:
+        return (
+            func,
+            flow_args,
+            jump_rate_args,
+            transition_args,
+            jump_time_transition_args,
+            jump_set_args,
+            jump_set_transition_args,
+            jump_rate_bound,
+        )
+    else:
+        return func
 
 
 def solve_shsvd_single_run(
@@ -393,13 +541,33 @@ def solve_shsvd_single_run(
     # Set additional arguments in functions
     if jump_rate_args is not None:
 
+        @wraps(jump_rate_function)
         def jump_rate_function(t, y, fun=jump_rate_function):
             return fun(t, y, *jump_rate_args)
 
     if transition_args is not None:
+        _add_attributes(transition_function)
 
+        @wraps(transition_function)
         def transition_function(t, y, fun=transition_function):
-            return fun(t, y, *transition_args)
+            args = _stack_args(
+                "stochastic",
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+                fun.returns_flow_args,
+                fun.returns_jump_rate_args,
+                fun.returns_transition_args,
+                fun.returns_jump_time_transition_args,
+                fun.returns_jump_set_args,
+                fun.returns_jump_set_transition_args,
+                fun.returns_jump_rate_bound,
+            )
+            return fun(t, y, *args)
 
     # Set transition function if none are provided
     if jump_times is not None and jump_time_transition_function is None:
@@ -425,7 +593,16 @@ def solve_shsvd_single_run(
 
     while t <= end_time:
         # Solve solution until next possible jump
-        func_partial = solve_hsvd(
+        (
+            func_partial,
+            flow_args,
+            jump_rate_args,
+            transition_args,
+            jump_time_transition_args,
+            jump_set_args,
+            jump_set_transition_args,
+            new_jump_rate_bound,
+        ) = solve_hsvd(
             flow_function,
             initial_value,
             (t0, t),
@@ -438,11 +615,19 @@ def solve_shsvd_single_run(
             jump_time_transition_args=jump_time_transition_args,
             jump_set_args=jump_set_args,
             jump_set_transition_args=jump_set_transition_args,
+            jump_rate_args=jump_rate_args,
+            transition_args=transition_args,
+            jump_rate_bound=jump_rate_bound,
+            return_args=True,
             solve_ivp_method=solve_ivp_method,
             **solve_ivp_options,
         )
 
         # Check if jump_rate_bound was violated, if necessary
+        if new_jump_rate_bound > jump_rate_bound:
+            jump_rate_bound = new_jump_rate_bound
+            continue
+
         if check_jump_rate:
             max_jump_rate = max(
                 [
@@ -472,7 +657,33 @@ def solve_shsvd_single_run(
         # the nonhomogeneous Poisson process
         s = random.random()
         if s <= jump_rate_function(last_time, last_value) / jump_rate_bound:
-            initial_value = transition_function(last_time, last_value)
+            values_after_jump = transition_function(last_time, last_value)
+            (
+                initial_value,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                jump_rate_bound,
+            ) = _assign_args(
+                values_after_jump,
+                flow_args,
+                jump_rate_args,
+                transition_args,
+                jump_time_transition_args,
+                jump_set_args,
+                jump_set_transition_args,
+                new_jump_rate_bound,
+                transition_function.returns_flow_args,
+                transition_function.returns_jump_rate_args,
+                transition_function.returns_transition_args,
+                transition_function.returns_jump_time_transition_args,
+                transition_function.returns_jump_set_args,
+                transition_function.returns_jump_set_transition_args,
+                transition_function.returns_jump_rate_bound,
+            )
             store_t0 = True
         else:
             initial_value = last_value
@@ -972,18 +1183,45 @@ def _partial_t_eval(t_eval, t0, tf):
 
     return t_eval_partial
 
-def _assign_args(values, flow_args, jump_time_transition_args, jump_set_args,
-                 jump_set_transition_args, returns_flow_args,
-                 returns_jump_time_transition_args, returns_jump_set_args,
-                 returns_jump_set_transition_args):
-    returns = [returns_flow_args, returns_jump_time_transition_args,
-               returns_jump_set_args, returns_jump_time_transition_args]
-    
+
+def _assign_args(
+    values,
+    flow_args,
+    jump_rate_args,
+    transition_args,
+    jump_time_transition_args,
+    jump_set_args,
+    jump_set_transition_args,
+    jump_rate_bound,
+    returns_flow_args,
+    returns_jump_rate_args,
+    returns_transition_args,
+    returns_jump_time_transition_args,
+    returns_jump_set_args,
+    returns_jump_set_transition_args,
+    returns_jump_rate_bound,
+):
+    returns = [
+        returns_flow_args,
+        returns_jump_rate_args,
+        returns_transition_args,
+        returns_jump_time_transition_args,
+        returns_jump_set_args,
+        returns_jump_time_transition_args,
+        returns_jump_rate_bound,
+    ]
+
     if any(returns):
         state = values[0]
         counter = 1
         if returns_flow_args:
             flow_args = values[counter]
+            counter += 1
+        if returns_jump_rate_args:
+            jump_rate_args = values[counter]
+            counter += 1
+        if returns_transition_args:
+            transition_args = values[counter]
             counter += 1
         if returns_jump_time_transition_args:
             jump_time_transition_args = values[counter]
@@ -994,34 +1232,81 @@ def _assign_args(values, flow_args, jump_time_transition_args, jump_set_args,
         if returns_jump_set_transition_args:
             jump_set_transition_args = values[counter]
             counter += 1
-            
+        if returns_jump_rate_bound:
+            jump_rate_bound = values[counter]
+            counter += 1
     else:
         state = values
-        
-    return (state, flow_args, jump_time_transition_args, jump_set_args,
-            jump_set_transition_args)
 
-def _stack_args(jump_type, flow_args, jump_time_transition_args, jump_set_args,
-                 jump_set_transition_args, returns_flow_args,
-                 returns_jump_time_transition_args, returns_jump_set_args,
-                 returns_jump_set_transition_args):
+    return (
+        state,
+        flow_args,
+        jump_rate_args,
+        transition_args,
+        jump_time_transition_args,
+        jump_set_args,
+        jump_set_transition_args,
+        jump_rate_bound,
+    )
+
+
+def _stack_args(
+    jump_type,
+    flow_args,
+    jump_rate_args,
+    transition_args,
+    jump_time_transition_args,
+    jump_set_args,
+    jump_set_transition_args,
+    jump_rate_bound,
+    returns_flow_args,
+    returns_jump_rate_args,
+    returns_transition_args,
+    returns_jump_time_transition_args,
+    returns_jump_set_args,
+    returns_jump_set_transition_args,
+    returns_jump_rate_bound,
+):
     # Assume that flow_args etc. are not None, if returns_flow_args is True
     args = ()
-    if jump_type == 'time' and jump_time_transition_args is not None:
+    if jump_type == "time" and jump_time_transition_args is not None:
         args += jump_time_transition_args
-    if jump_type == 'set' and jump_set_transition_args is not None:
+    if jump_type == "set" and jump_set_transition_args is not None:
         args += jump_set_transition_args
+    if jump_type == "stochastic" and transition_args is not None:
+        args += transition_args
     if returns_flow_args:
         args += flow_args
-    if returns_jump_time_transition_args and jump_type != 'time':
+    if returns_jump_rate_args:
+        args += jump_rate_args
+    if returns_jump_time_transition_args and jump_type != "time":
         args += jump_time_transition_args
     if returns_jump_set_args:
         args += jump_set_args
-    if returns_jump_set_transition_args and jump_type != 'set':
+    if returns_jump_set_transition_args and jump_type != "set":
         args += jump_set_transition_args
-    
+    if returns_jump_rate_bound:
+        args += (jump_rate_bound,)
+
     return args
-        
+
+
+def _add_attributes(func):
+    if not hasattr(func, "returns_flow_args"):
+        func.returns_flow_args = False
+    if not hasattr(func, "returns_jump_rate_args"):
+        func.returns_jump_rate_args = False
+    if not hasattr(func, "returns_transition_args"):
+        func.returns_transition_args = False
+    if not hasattr(func, "returns_jump_time_transition_args"):
+        func.returns_jump_time_transition_args = False
+    if not hasattr(func, "returns_jump_set_args"):
+        func.returns_jump_set_args = False
+    if not hasattr(func, "returns_jump_set_transition_args"):
+        func.returns_jump_set_transition_args = False
+    if not hasattr(func, "returns_jump_rate_bound"):
+        func.returns_jump_rate_bound = False
+
 
 if __name__ == "__main__":
 
