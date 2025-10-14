@@ -24,7 +24,7 @@ tf = 500
 x0 = [.999, .001, 0]
 beta = .15
 gamma = .1
-m = .1
+m = 1
 
 t_span = (t0, tf)
 
@@ -46,6 +46,7 @@ plt.plot(t_eval, mutation_time_pdf)
 plt.show()
 plt.plot(t_eval, mutation_time_cdf)
 plt.show()
+print(np.exp(-m * r[-1] / gamma))
 
 
 def iterated_sum_poisson(max_iter, lambda_param, n):

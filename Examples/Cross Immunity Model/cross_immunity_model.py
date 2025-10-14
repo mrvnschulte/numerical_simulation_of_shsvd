@@ -781,7 +781,7 @@ def jump_rate_function(t, x, m=.1):
         return m * x[2]
     else:
         return 0
-    
+
 mutation_rate = .1
 
 func = solve_hsvd(multi_variant_model_with_total_infections, x0,
@@ -811,21 +811,71 @@ func = solve_shsvd_single_run(
 func.plot_coordinates(labels=['s', 'r1', 'i1', 'r2', 'i2', 'r12', 'i1,12',
                               'i2,12', 'i12', 'n1', 'n2'])
 
-# stats = solve_shsvd(
-#     multi_variant_model_with_total_infections, 
-#     jump_rate_function,
-#     new_variant_transition_function_with_total_infections,
-#     x0,
-#     (t0, tf),
-#     jump_rate_bound=mutation_rate,
-#     t_eval=t_eval,
-#     #jump_times=[100],
-#     jump_time_transition_function=
-#     new_variant_transition_function_with_total_infections,
-#     flow_args=(beta, gamma, sigma, 1),
-#     jump_time_transition_args=(beta_new, gamma_new, sigma_new),
-#     jump_rate_args=(mutation_rate,),
-#     tol=1e-2,
-#     min_iterations=20,
-#     convergence_estimate=('cef', 0),
-#     )
+
+
+file = 'final_infections_stochastic_mutation.csv'
+
+if os.path.exists(file):
+    final_infections = np.loadtxt(file1, delimiter=',', skiprows=1)
+
+    # Extrahiere sigmas und r02s
+    cross_immunities = final_infections[:, 0]  # Die erste Spalte ist sigmas
+    final_infections = final_infections[:, 1:]  # Der Rest sind die Werte für final_infections_1
+    
+    # sigmas extrahieren, indem wir die erste Zeile der CSV Datei lesen und die Kopfzeile ignorieren
+    header = np.loadtxt(file1, delimiter=',', max_rows=1, dtype=str)  # Lies die Kopfzeile als String
+    mutation_rates = header[1:].astype(float)  # Wandle die Werte in float um, überspringe das erste Element
+
+else:
+    mutation_rates = np.linspace(.1, 1, 21)
+    cross_immunities = np.linspace(0, 1, 21)
+    
+    final_infections = np.zeros((len(cross_immunities), len(mutation_rates)))
+    
+    for i, s in enumerate(cross_immunities):
+        for j, m in enumerate(mutation_rates):
+            sigma_new = [s]
+
+
+            stats = solve_shsvd(
+                multi_variant_model_with_total_infections, 
+                jump_rate_function,
+                new_variant_transition_function_with_total_infections,
+                x0,
+                (t0, tf),
+                jump_rate_bound=m,
+                t_eval=t_eval,
+                #jump_times=[100],
+                jump_time_transition_function=
+                new_variant_transition_function_with_total_infections,
+                flow_args=(beta, gamma, sigma, 1),
+                jump_time_transition_args=(beta_new, gamma_new, sigma_new),
+                jump_rate_args=(m,),
+                tol=1e-3,
+                min_iterations=10,
+                convergence_estimate=('cef', 0),
+                convergence_estimate_type=(("time", tf),),
+                custom_evaluation_functions=[total_infections],
+                )
+            # stats.plot_cefs()
+            
+            final_infections[i, j] = stats.cef_means[0][-1]
+            
+    final_infections_with_sigma = np.column_stack((cross_immunities, final_infections))
+
+    # Speichern der Matrizen als CSV-Dateien
+    np.savetxt(file, final_infections_with_sigma, delimiter=',', header='sigma,' + ','.join(map(str, mutation_rates)), comments='')
+
+c = plt.pcolormesh(mutation_rates, cross_immunities, final_infections)
+plt.colorbar(c, label='Final number of infections')
+plt.title(r'Final number of infections ($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
+plt.ylabel(r'Cross-immunity $\sigma$')
+plt.xlabel(r'Mutation rate $m$')
+plt.show()
+
+c = plt.contourf(mutation_rates, cross_immunities, final_infections)
+plt.colorbar(c, label='Final number of infections')
+plt.title(r'Final number of infections ($R_0^1=1.5, R_0^2=2, \gamma_1=\gamma_2=0.1$)')
+plt.ylabel(r'Cross-immunity $\sigma$')
+plt.xlabel(r'Mutation rate $m$')
+plt.show()

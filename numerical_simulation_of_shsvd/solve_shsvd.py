@@ -931,15 +931,25 @@ def solve_shsvd(
 
         # Check whether convergence estimate types are set to possible options
         # and list indices of the options in a dictionary
-        estimate_type_dict = {"max": [], "mean": [], "int": []}
+        estimate_type_dict = {"max": [], "mean": [], "int": [], "time": []}
         for i, cet in enumerate(convergence_estimate_type):
             if cet not in ["max", "mean", "int"]:
-                raise ValueError(
-                    f"Possible options for convergence estimate \
-                                 type are 'max', 'mean' and 'int'. {cet} is \
-                                 no known option."
-                )
-            estimate_type_dict[cet].append(i)
+                if cet[0] != "time":
+                    raise ValueError(
+                        f"Possible options for convergence estimate \
+                            type are 'max', 'mean', 'int' and 'time'. {cet} is \
+                            no known option."
+                    )
+                if cet[1] not in t_eval:
+                    raise ValueError(
+                        f"If specific time is used as convergence estimate, \
+                            it must be in t_eval, but {cet[1]} is not."
+                    )
+                t_eval_list = list(t_eval)
+                index = t_eval_list.index(cet[1])
+                estimate_type_dict["time"].append([i, index])
+            else:
+                estimate_type_dict[cet].append(i)
 
         # If estimation_mode is weighted_sum, check whether estimation_weights
         # of the same length as convergence_estimate are provided and set
@@ -1079,6 +1089,12 @@ def solve_shsvd(
                     )
                     * stepsize
                 )
+            if len(estimate_type_dict["time"]) > 0:
+                for i in estimate_type_dict["time"]:
+                    difference[i[0]] = abs(
+                        old_convergence_values[i[0], i[1]]
+                        - new_convergence_values[i[0], i[1]]
+                    )
 
             if verbose and (it + 1) % verbose_step == 0:
                 print(f"Convergence estimates: {difference}")
