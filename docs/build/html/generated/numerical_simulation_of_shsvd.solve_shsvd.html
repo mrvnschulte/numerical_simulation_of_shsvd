@@ -36,7 +36,7 @@
 <span id="numerical-simulation-of-shsvd-solve-shsvd"></span><h1>numerical_simulation_of_shsvd.solve_shsvd<a class="headerlink" href="#module-numerical_simulation_of_shsvd.solve_shsvd" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="numerical_simulation_of_shsvd.solve_shsvd.solve_hsvd">
-<span class="sig-prename descclassname"><span class="pre">numerical_simulation_of_shsvd.solve_shsvd.</span></span><span class="sig-name descname"><span class="pre">solve_hsvd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flow_function</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_span</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_times</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_eval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_args_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_args_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solve_ivp_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RK45'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">solve_ivp_options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#numerical_simulation_of_shsvd.solve_shsvd.solve_hsvd" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">numerical_simulation_of_shsvd.solve_shsvd.</span></span><span class="sig-name descname"><span class="pre">solve_hsvd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flow_function</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_span</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_times</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_eval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_time_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_set_transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_rate_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jump_rate_bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solve_ivp_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RK45'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">solve_ivp_options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#numerical_simulation_of_shsvd.solve_shsvd.solve_hsvd" title="Link to this definition">¶</a></dt>
 <dd><p>Solves a hybrid system of variable dimension.</p>
 <p>This function integrates the flow of a system defined by the flow_function
 over a specified time span, accounting for possible transitions defined by
@@ -55,25 +55,46 @@ well as preset jump_times.</p>
 jump_time_transition_function if none is provided.</p></li>
 <li><p><strong>t_eval</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Specific times at which to store the computed solution.</p></li>
 <li><p><strong>flow_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the flow_function.</p></li>
-<li><p><strong>flow_args_transition_function</strong> (<em>callable</em><em>, </em><em>optional</em>) – Function that specifies the flow_args after a jump.</p></li>
-<li><p><strong>flow_args_transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the flow_args_transition_function.</p></li>
 <li><p><strong>jump_time_transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_time_transition_function.</p></li>
 <li><p><strong>jump_set_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_set_function.</p></li>
 <li><p><strong>jump_set_transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_set_transition_function.</p></li>
+<li><p><strong>jump_rate_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the jump_rate_function in
+solve_shsvd_single_run, which might change during jumps. Should
+not be provided when calling solve_hsvd directly.</p></li>
+<li><p><strong>transition_args</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Additional arguments to pass to the transition_function in
+solve_shsvd_single_run, which might change during jumps. Should
+not be provided when calling solve_hsvd directly.</p></li>
+<li><p><strong>jump_rate_bound</strong> (<em>float</em><em>, </em><em>optional</em>) – The upper bound of the jump rate in solve_shsvd_single_run, which
+might change during jumps. Should not be provided when calling
+solve_hsvd directly.</p></li>
+<li><p><strong>return_args</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, all additional arguments are returned. This option is
+mainly for calls of the method inside solve_shsvd_single_run.</p></li>
 <li><p><strong>solve_ivp_method</strong> (<em>str</em><em>, </em><em>optional</em>) – The method to use for solving the initial value problem
 (default is ‘RK45’).</p></li>
 <li><p><strong>solve_ivp_options</strong> (<em>keyword arguments</em><em>, </em><em>optional</em>) – Additional options for the solve_ivp function.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>func</strong> – An object containing the time and value data of the system after
-integration.</p>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>func</strong> (<em>FunctionOfVariableDimension</em>) – An object containing the time and value data of the system after
+integration.</p></li>
+<li><p><strong>flow_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the flow_function. Only returned if
+return_args is True.</p></li>
+<li><p><strong>jump_rate_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the jump_rate_function. Only
+returned if return_args is True.</p></li>
+<li><p><strong>transition_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the transition_function. Only
+returned if return_args is True.</p></li>
+<li><p><strong>jump_time_transition_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the jump_time_transition_function.
+Only returned if return_args is True.</p></li>
+<li><p><strong>jump_set_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the jump_set_function. Only
+returned if return_args is True.</p></li>
+<li><p><strong>jump_set_transition_args</strong> (<em>tuple, optional</em>) – Additional arguments to pass to the jump_set_transition_function.
+Only returned if return_args is True.</p></li>
+</ul>
+</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="numerical_simulation_of_shsvd.function_vd.FunctionOfVariableDimension.html#numerical_simulation_of_shsvd.function_vd.FunctionOfVariableDimension" title="numerical_simulation_of_shsvd.function_vd.FunctionOfVariableDimension">FunctionOfVariableDimension</a></p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>ValueError</strong> – If jump time/set transition function is not given although jump
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If jump time/set transition function is not given although jump
     times/set are given.</p>
 </dd>
 </dl>
@@ -135,7 +156,8 @@ list.</p></li>
 Defines what has to be below the tolerance for convergence:
 ‘max’: maximum
 ‘mean’: mean
-‘int’: integral</p></li>
+‘int’: integral
+(‘time’, t): value at specific time t which must be in t_eval</p></li>
 <li><p><strong>estimation_mode</strong> (<em>str</em><em>, </em><em>optional</em>) – Mode for convergence estimation. Options are:
 ‘all’: All estimates must be below the tolerance(s)
 ‘any’: Any estimate must be below the tolerance

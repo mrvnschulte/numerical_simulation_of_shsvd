@@ -828,6 +828,7 @@ def solve_shsvd(
             'max': maximum
             'mean': mean
             'int': integral
+            ('time', t): value at specific time t which must be in t_eval
         estimation_mode : str, optional
             Mode for convergence estimation. Options are:
             'all': All estimates must be below the tolerance(s)
@@ -1217,6 +1218,72 @@ def _assign_args(
     returns_jump_set_transition_args,
     returns_jump_rate_bound,
 ):
+    """
+    Assigns values to corresponding arguments based on the returns specified.
+
+    This function processes the provided values and assigns them to the
+    relevant arguments, returning the updated values. It checks which
+    arguments should be returned based on the flags, allowing for flexible
+    handling of the function's state.
+
+    Parameters
+    ----------
+        values : list or array-like
+            A list of values to be assigned to the corresponding arguments.
+        flow_args : tuple
+            Current values of additional arguments for the flow_function.
+        jump_rate_args : tuple
+            Current values of additional arguments for the jump_rate_function.
+        transition_args : tuple
+            Current values of additional arguments for the transition_function.
+        jump_time_transition_args : tuple
+            Current values of additional arguments for the
+            jump_time_transition_function.
+        jump_set_args : tuple
+            Current values of additional arguments for the jump_set_function.
+        jump_set_transition_args : tuple
+            Current values of additional arguments for the
+            jump_set_transition_function.
+        jump_rate_bound : float
+            Current value of the upper bound for the jump rate.
+        returns_flow_args : bool
+            Flag indicating whether flow_args have been returned.
+        returns_jump_rate_args : bool
+            Flag indicating whether jump_rate_args have been returned.
+        returns_transition_args : bool
+            Flag indicating whether transition_args have been returned.
+        returns_jump_time_transition_args : bool
+            Flag indicating whether jump_time_transition_args have been
+            returned.
+        returns_jump_set_args : bool
+            Flag indicating whether jump_set_args have been returned.
+        returns_jump_set_transition_args : bool
+            Flag indicating whether jump_set_transition_args have been
+            returned.
+        returns_jump_rate_bound : bool
+            Flag indicating whether jump_rate_bound has been returned.
+
+    Returns
+    -------
+        state : np.ndarray
+            The updated state of the system.
+        flow_args : tuple
+            Updated values of additional arguments for the flow_function.
+        jump_rate_args : tuple
+            Updated values of additional arguments for the jump_rate_function.
+        transition_args : tuple
+            Updated values of additional arguments for the transition_function.
+        jump_time_transition_args : tuple
+            Updated values of additional arguments for the
+            jump_time_transition_function.
+        jump_set_args : tuple
+            Updated values of additional arguments for the jump_set_function.
+        jump_set_transition_args : tuple
+            Updated values of additional arguments for the
+            jump_set_transition_function.
+        jump_rate_bound : float
+            Updated value of the upper bound for the jump rate.
+    """
     returns = [
         returns_flow_args,
         returns_jump_rate_args,
@@ -1283,6 +1350,53 @@ def _stack_args(
     returns_jump_set_transition_args,
     returns_jump_rate_bound,
 ):
+    """
+    Stacks arguments based on the jump type and specified return flags.
+
+    This function constructs a tuple of arguments to be passed to the
+    respective functions based on the jump type. It combines the necessary
+    arguments, ensuring that only the relevant ones are included based on
+    the provided flags.
+
+    Parameters
+    ----------
+        jump_type : str
+            The type of jump ('time', 'set', or 'stochastic') to determine
+            which arguments to stack and in which order.
+        flow_args : tuple
+            Additional arguments for the flow_function.
+        jump_rate_args : tuple
+            Additional arguments for the jump_rate_function.
+        transition_args : tuple
+            Additional arguments for the transition_function.
+        jump_time_transition_args : tuple
+            Additional arguments for the jump_time_transition_function.
+        jump_set_args : tuple
+            Additional arguments for the jump_set_function.
+        jump_set_transition_args : tuple
+            Additional arguments for the jump_set_transition_function.
+        jump_rate_bound : float
+            The upper bound for the jump rate.
+        returns_flow_args : bool
+            Flag indicating whether flow_args will be returned.
+        returns_jump_rate_args : bool
+            Flag indicating whether jump_rate_args will be returned.
+        returns_jump_time_transition_args : bool
+            Flag indicating whether jump_time_transition_args will be returned.
+        returns_jump_set_args : bool
+            Flag indicating whether jump_set_args will be returned.
+        returns_jump_set_transition_args : bool
+            Flag indicating whether jump_set_transition_args will be returned.
+        returns_jump_rate_bound : bool
+            Flag indicating whether jump_rate_bound will be returned.
+
+    Returns
+    -------
+        args : tuple
+            A tuple of stacked arguments based on the specified jump type
+            and return flags. It combines the arguments for the transition type
+            and the arguments which will be returned in one tuple.
+    """
     # Assume that flow_args etc. are not None, if returns_flow_args is True
     args = ()
     if jump_type == "time" and jump_time_transition_args is not None:
@@ -1308,6 +1422,22 @@ def _stack_args(
 
 
 def _add_attributes(func):
+    """
+    Adds default attributes to a given function for tracking return flags.
+
+    This function ensures that the specified function has certain attributes
+    that indicate whether it returns additional arguments. If the attributes
+    do not exist, they are initialized to False.
+
+    Parameters
+    ----------
+        func : callable
+            The function to which attributes will be added.
+
+    Returns
+    -------
+        None
+    """
     if not hasattr(func, "returns_flow_args"):
         func.returns_flow_args = False
     if not hasattr(func, "returns_jump_rate_args"):
