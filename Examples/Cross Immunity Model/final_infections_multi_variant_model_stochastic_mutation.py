@@ -29,8 +29,9 @@ sigma = [[1]]
 beta_new = 0.2
 gamma_new = 0.1
 t_eval = np.arange(tf + 1)
+tol = 1e-3
 
-file = "Data/final_infections_stochastic_mutation.csv"
+file = f"Data/final_infections_stochastic_mutation_tol_{tol}.csv"
 
 if os.path.exists(file):
     final_infections = np.loadtxt(file, delimiter=",", skiprows=1)
@@ -72,7 +73,7 @@ else:
                 jump_time_transition_args=(beta_new, gamma_new, sigma_new),
                 transition_args=(beta_new, gamma_new, sigma_new),
                 jump_rate_args=(m,),
-                tol=1e-4,
+                tol=tol,
                 min_iterations=50,
                 convergence_estimate=("cef", 0),
                 convergence_estimate_type=(("time", tf),),
@@ -80,6 +81,7 @@ else:
             )
 
             final_infections[i, j] = stats.cef_means[0][-1]
+            print(f'Finished computation for sigma={s} and m={m}')
 
     final_infections_with_sigma = np.column_stack(
         (cross_immunities, final_infections)

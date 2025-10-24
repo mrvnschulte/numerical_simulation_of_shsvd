@@ -11,54 +11,57 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm
 import pandas as pd
 
+"""
+Script which was used to test multi-variant SIR model.
+"""
 
-def sir_model(t, x, beta=.15, gamma=.1):
-    
-    n = int(len(x)/3)
-    
+
+def sir_model(t, x, beta=0.15, gamma=0.1):
+
+    n = int(len(x) / 3)
+
     dx = []
     for j in range(n):
-        s, i, r = x[3*j:3*j+3]
+        s, i, r = x[3 * j : 3 * j + 3]
         ds = -beta * s * i
         di = beta * s * i - gamma * i
         dr = gamma * i
         dx.append(ds)
         dx.append(di)
         dx.append(dr)
-        
+
     return dx
 
 
 def total_infectious(x):
-    
+
     if isinstance(x[0], (list, np.ndarray)):
-        
+
         i_ges = [total_infectious(y) for y in x]
-        
+
         return i_ges
-        
+
     else:
-        n = int(len(x)/3)
-        
+        n = int(len(x) / 3)
+
         i_ges = 0
-        
+
         for j in range(n):
-            i_ges += (1-i_ges) * x[3*j+1]
-            
+            i_ges += (1 - i_ges) * x[3 * j + 1]
+
         return i_ges
 
-        
 
-def mutation_probability(t, x, m=.5):
-    
+def mutation_probability(t, x, m=0.5):
+
     i_ges = total_infectious(x)
     mutation_probability = m * i_ges
-    
-    return mutation_probability
-        
 
-def transition_function(t, x, i_start=.001):
-    
+    return mutation_probability
+
+
+def transition_function(t, x, i_start=0.001):
+
     x = list(x)
     s = 1 - i_start
     i = i_start
@@ -66,39 +69,41 @@ def transition_function(t, x, i_start=.001):
     x.append(s)
     x.append(i)
     x.append(r)
-    
+
     return x
 
 
-def overall_mutation_probability(values, m=.5, stepsize=1):
-    
-    mutation_probabilities = [mutation_probability(0, value, m=mutation_rate) for value in values]
+def overall_mutation_probability(values, m=0.5, stepsize=1):
+
+    mutation_probabilities = [
+        mutation_probability(0, value, m=mutation_rate) for value in values
+    ]
     overall_mutation_probability = stepsize * np.cumsum(mutation_probabilities)
-    
+
     return overall_mutation_probability
 
 
 def active_variants(x):
-    
-    if isinstance(x[0], (list, np.ndarray)):
-        
-        variants = [active_variants(y) for y in x]
-        
-        return variants
-        
-    else:
-        n = int(len(x)/3)
-        
-        variants = 0
-        
-        for j in range(n):
-            if x[3*j+1] > .001:
-                variants += 1
-            
-        return variants
-    
 
-initial_value = (.999, .001, 0)
+    if isinstance(x[0], (list, np.ndarray)):
+
+        variants = [active_variants(y) for y in x]
+
+        return variants
+
+    else:
+        n = int(len(x) / 3)
+
+        variants = 0
+
+        for j in range(n):
+            if x[3 * j + 1] > 0.001:
+                variants += 1
+
+        return variants
+
+
+initial_value = (0.999, 0.001, 0)
 t_span = (0, 250)
 sol = solve_hsvd(sir_model, transition_function, initial_value, t_span)
 
@@ -122,7 +127,7 @@ sol = solve_hsvd(sir_model, transition_function, initial_value, t_span)
 #             sir_mutation_stats = solve_shsvd(sir_model, mutation_probability, transition_function, x0, t_span, mutation_rate, norm_order=[1, 2], collect_jump_times=True, flow_args=(beta, gamma), jump_rate_args=(mutation_rate, ), iterations=50, custom_evaluation_functions=[total_infectious])
 #             #sir_mutation_stats.plot_cefs()
 #             final_i_values[i, j] = sir_mutation_stats.cef_means[0][-1]
-        
+
 # ticks = [0, .0005, .001, .05, .1, 1]
 # lower_section = [0, .001]
 # middle_section = [.001, .1]

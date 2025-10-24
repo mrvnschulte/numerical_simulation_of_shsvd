@@ -545,8 +545,9 @@ def solve_shsvd_single_run(
         def jump_rate_function(t, y, fun=jump_rate_function):
             return fun(t, y, *jump_rate_args)
 
+    _add_attributes(transition_function)
+
     if transition_args is not None:
-        _add_attributes(transition_function)
 
         @wraps(transition_function)
         def transition_function(t, y, fun=transition_function):
@@ -923,7 +924,8 @@ def solve_shsvd(
                                  length equal to the number of convergence \
                                  estimates must be provided for convergence \
                                  estimate type. Possible options are 'max', \
-                                 'mean' and 'int'."
+                                 'mean', 'int' and 'time' together with a \
+                                 specific time."
                 )
         else:
             convergence_estimate_type = [convergence_estimate_type] * len(
@@ -941,12 +943,12 @@ def solve_shsvd(
                             type are 'max', 'mean', 'int' and 'time'. {cet} is \
                             no known option."
                     )
-                if cet[1] not in t_eval:
+                if cet[1] not in stats.times:
                     raise ValueError(
                         f"If specific time is used as convergence estimate, \
                             it must be in t_eval, but {cet[1]} is not."
                     )
-                t_eval_list = list(t_eval)
+                t_eval_list = list(stats.times)
                 index = t_eval_list.index(cet[1])
                 estimate_type_dict["time"].append([i, index])
             else:
