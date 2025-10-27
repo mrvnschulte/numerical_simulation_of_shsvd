@@ -112,7 +112,7 @@ for r02 in r02s:
     final_infections = final_infections_1 + final_infections_2
     max_index = np.argmax(final_infections, axis=1)
     max_delays = delays[max_index]
-    
+
     c = plt.pcolormesh(delays, cross_immunities, final_infections_1)
     plt.colorbar(c, label="Final number of infections with variant 1")
     plt.title(
@@ -169,5 +169,12 @@ for r02 in r02s:
     )
     plt.ylabel(r"Cross-immunity $\sigma$")
     plt.xlabel(r"Time of mutation")
-    plt.scatter(max_delays, cross_immunities, color='red', marker='x', s=100, label='Maximum')
+    plt.scatter(
+        max_delays,
+        cross_immunities,
+        color="red",
+        marker="x",
+        s=100,
+        label="Maximum",
+    )
     plt.show()
