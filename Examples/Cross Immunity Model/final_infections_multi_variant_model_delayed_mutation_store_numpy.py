@@ -55,9 +55,9 @@ if os.path.exists(file_name_1) and os.path.exists(file_name_2):
     final_infections_2_old = np.load(file_name_2)
 
     if (
-        betas_old == betas
-        and sigmas_old == cross_immunities
-        and delays_old == delays
+        np.all(betas_old == betas)
+        and np.all(sigmas_old == cross_immunities)
+        and np.all(delays_old == delays)
     ):
         compute = False
         final_infections_1 = final_infections_1_old

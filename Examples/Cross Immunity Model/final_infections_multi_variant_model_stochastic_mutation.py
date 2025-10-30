@@ -29,7 +29,7 @@ sigma = [[1]]
 beta_new = 0.2
 gamma_new = 0.1
 t_eval = np.arange(tf + 1)
-tol = 1e-3
+tol = "1e-3"
 
 file = f"Data/final_infections_stochastic_mutation_tol_{tol}.csv"
 
@@ -51,6 +51,7 @@ if os.path.exists(file):
     )  # Wandle die Werte in float um, überspringe das erste Element
 
 else:
+    tol = float(tol)
     mutation_rates = np.linspace(0, 1, 21)
     cross_immunities = np.linspace(0, 1, 21)
 
@@ -81,7 +82,7 @@ else:
             )
 
             final_infections[i, j] = stats.cef_means[0][-1]
-            print(f'Finished computation for sigma={s} and m={m}')
+            print(f"Finished computation for sigma={s} and m={m}")
 
     final_infections_with_sigma = np.column_stack(
         (cross_immunities, final_infections)
