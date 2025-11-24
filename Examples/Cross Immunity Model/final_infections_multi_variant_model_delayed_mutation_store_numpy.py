@@ -12,6 +12,8 @@ from cross_immunity_model import (
     multi_variant_model_with_total_infections,
     new_variant_transition_function_with_total_infections,
 )
+from scipy.interpolate import make_interp_spline
+
 
 """
 Computes the final number of infections with two variants in a cross-immunity
@@ -43,6 +45,8 @@ file_name_2 = "final_infections_2_delayed_mutation.npy"
 file_name_betas = "betas_delayed_mutation.npy"
 file_name_sigmas = "sigmas_delayed_mutation.npy"
 file_name_delays = "delays_delayed_mutation.npy"
+
+dpi = 500
 
 compute = True
 
@@ -156,18 +160,26 @@ for idx in plot_indices:
     plt.show()
 
     c = plt.contourf(delays, cross_immunities, final_infections[idx])
-    plt.colorbar(c, label="Final number of infections")
-    plt.title(
-        rf"Final number of infections ($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
-    )
-    plt.ylabel(r"Cross-immunity $\sigma$")
-    plt.xlabel(r"Time of mutation")
-    plt.scatter(
+    cb = plt.colorbar(c, label="Final number of infections")
+    cb.set_label(label="Final number of infections", fontsize=12)
+    cb.ax.tick_params(labelsize=10)
+    # plt.title(
+    #     rf"Final number of infections ($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
+    # )
+    plt.ylabel(r"Cross-immunity $\sigma$", fontsize=12)
+    plt.xlabel(r"Time of mutation", fontsize=12)
+    plt.plot(
         max_delays,
         cross_immunities,
         color="red",
-        marker="x",
-        s=100,
-        label="Maximum",
+        label="Mutation time maximizing number of infections",
+        # marker="x",
+        # s=100,
+        # label="Maximum",
     )
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.legend(fontsize=10)
+    plt.tight_layout()
+    plt.savefig("Plots/Final_infections_delay.jpg", dpi=dpi)
     plt.show()

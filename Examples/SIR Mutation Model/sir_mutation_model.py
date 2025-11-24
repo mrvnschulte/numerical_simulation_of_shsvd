@@ -323,6 +323,8 @@ if __name__ == "__main__":
     tf = 1000
     t_span = (0, tf)
     betas = 0.01 * np.arange(11, 26)
+    r0s = betas * 10
+    r0s = np.round(r0s, 1)
     gamma = 0.1
     mutation_rates = [
         0.01,
@@ -358,13 +360,13 @@ if __name__ == "__main__":
 
     # Compute results by either using old data or computing new one, if no old is
     # available
-    for i, beta in enumerate(betas):
+    for i, r0 in enumerate(r0s):
         for j, mutation_rate in enumerate(mutation_rates):
             if (
-                beta in df_final_i_old.index
+                r0 in df_final_i_old.index
                 and mutation_rate in df_final_i_old.columns
             ):
-                final_i_values[i, j] = df_final_i_old.loc[beta, mutation_rate]
+                final_i_values[i, j] = df_final_i_old.loc[r0, mutation_rate]
             else:
                 sir_mutation_stats = solve_shsvd(
                     sir_model,
@@ -375,7 +377,7 @@ if __name__ == "__main__":
                     mutation_rate,
                     norm_order=[1, 2],
                     collect_jump_times=True,
-                    flow_args=(beta, gamma),
+                    flow_args=(r0 * gamma, gamma),
                     jump_rate_args=(mutation_rate,),
                     tol=tol,
                     min_iterations=50,
@@ -385,9 +387,7 @@ if __name__ == "__main__":
                 )
                 # sir_mutation_stats.plot_cefs()
                 final_i_values[i, j] = sir_mutation_stats.cef_means[0][-1]
-            print(
-                f"Finished computation for beta={beta} and m={mutation_rate}"
-            )
+            print(f"Finished computation for r0={r0} and m={mutation_rate}")
 
     # Set color map
     ticks = [0, 0.0005, 0.001, 0.05, 0.1, 1]
@@ -441,6 +441,8 @@ if __name__ == "__main__":
     plt.savefig("Mean_final_i_meshplot.jpg", dpi=dpi)
     plt.show()
 
+    betas = betas * 10
+
     plt.figure(figsize=(8, 6))
     c = plt.contourf(
         betas,
@@ -450,32 +452,35 @@ if __name__ == "__main__":
         cmap=cmap,
         norm=norm,
     )
-    plt.colorbar(
+    cb = plt.colorbar(
         c,
         label=r"Mean $I_{ges}(1000)$",
         ticks=ticks,
         boundaries=boundaries,
         format="%.4f",
     )
-    plt.ylabel(r"Mutation rate $m$")
-    plt.xlabel(r"$\beta$")
-    plt.title(
-        r"Mean $I_{ges}(1000)$ for different $\beta$ and mutation rates $m$"
-    )
-    plt.yticks(mutation_rates)
-    plt.xticks(betas)
-    plt.plot(betas, critical_m, "red")
+    cb.set_label(label=r"Mean $I_{ges}(1000)$", size=14)
+    cb.ax.tick_params(labelsize=14)
+    plt.ylabel(r"Mutation rate $m$", fontsize=14)
+    plt.xlabel(r"Basic reproduction number $R_0$", fontsize=14)
+    # plt.title(
+    #     r"Mean $I_{ges}(1000)$ for different $R_0$ and mutation rates $m$"
+    # )
+    plt.yticks(fontsize=14)  # mutation_rates)
+    plt.xticks(fontsize=14)  # betas)
+    plt.plot(betas, critical_m, "red", label="$M_0=1$")
+    plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig("Mean_final_i_countourf.jpg", dpi=dpi)
     plt.show()
 
     # Save results
     df_final_i = pd.DataFrame(
-        final_i_values, index=betas, columns=mutation_rates
+        final_i_values, index=r0s, columns=mutation_rates
     )
     df_final_i.to_csv("Mean_final_i.csv")
-
-    # Set parameters for example plot with seasonality and extinction
+    """
+    # Set parameters for example plot with extinction
     t_span = (0, 500)
     beta = 0.15
     mutation_rate = 0.2
@@ -554,3 +559,4 @@ if __name__ == "__main__":
         [1, 2], density=True, separate_plots=True
     )
     sir_mutation_stats.plot_number_of_jumps()
+    """

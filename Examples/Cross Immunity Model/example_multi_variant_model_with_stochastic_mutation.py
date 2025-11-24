@@ -12,6 +12,9 @@ from cross_immunity_model import (
     mutation_probability_function,
     multi_variant_model_with_demographics,
     new_variant_transition_function,
+    new_variant_transition_function_with_demographics,
+    multi_variant_model_with_matrices,
+    new_variant_transition_function_with_matrices,
 )
 
 t0 = 0
@@ -54,6 +57,40 @@ func.plot_coordinates(
     ]
 )
 
+V = np.array([[0, 1]])
+G = np.array([[0, gamma[0]], [0, 0]])
+T = np.array([[[0, 1], [0, 0]]])
+S = np.array([[[0, 0], [1, 0]]])
+n = 1
+x0 = np.array([0.999, 0, 0.001])
+
+
+func = solve_hsvd(
+    multi_variant_model_with_matrices,
+    x0,
+    (t0, tf),
+    t_eval=t_eval,
+    jump_times=[100],
+    jump_time_transition_function=new_variant_transition_function_with_matrices,
+    flow_args=(beta, gamma, sigma, V, G, T, S, n),
+    jump_time_transition_args=(beta_new, gamma_new, sigma_new),
+)
+func.plot_coordinates(
+    labels=[
+        "s",
+        "r1",
+        "i1",
+        "r2",
+        "i2",
+        "r12",
+        "i1,12",
+        "i2,12",
+        "i12",
+    ]
+)
+
+x0 = np.array([0.999, 0, 0.001, 0.001])
+
 func = solve_shsvd_single_run(
     multi_variant_model_with_total_infections,
     mutation_probability_function,
@@ -83,11 +120,11 @@ func.plot_coordinates(
 )
 
 x0 = np.array([0.999, 0, 0.001])
-b = .01
+b = 0.01
 tf = 2000
 t_eval = np.arange(tf + 1)
-beta_new = .16
-sigma_new = [.8]
+beta_new = 0.16
+sigma_new = [0.8]
 
 func = solve_hsvd(
     multi_variant_model_with_demographics,
@@ -95,7 +132,7 @@ func = solve_hsvd(
     (t0, tf),
     t_eval=t_eval,
     jump_times=[1000],
-    jump_time_transition_function=new_variant_transition_function,
+    jump_time_transition_function=new_variant_transition_function_with_demographics,
     flow_args=(beta, gamma, sigma, b),
     jump_time_transition_args=(beta_new, gamma_new, sigma_new),
 )

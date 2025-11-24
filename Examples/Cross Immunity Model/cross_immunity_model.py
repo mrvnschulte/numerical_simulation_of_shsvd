@@ -97,7 +97,7 @@ def multi_variant_model(t, x, beta, gamma, sigma):
 
     # Transform state vector into corresponding matrix
     I = map_x_to_I(x)
-    dI = np.zeros_like(I)
+    # dI = np.zeros_like(I)
 
     V = variant_in_set_matrix(n)  # It could be beneficial to store these
     # matrices in a class at their first evaluation instead of constructing it
@@ -109,26 +109,80 @@ def multi_variant_model(t, x, beta, gamma, sigma):
     gamma_sum = (V.T @ gamma).flatten()
     # Compute the transmission factor for each variant
     transmission_vector = beta * I_variant
-    # TO-DO
+    # TO-DO: Comment
     beta_sum = ((np.ones_like(V) - V).T @ (transmission_vector)).flatten()
     gamma_matrix = compute_gamma_matrix(n, gamma)
     T = construct_transition_matrix(n, sigma)
     S = np.array([shift_matrix(size, 2**m) for m in range(n)])
     W = transmission_vector[:, np.newaxis, np.newaxis] * T
 
-    for j in range(size):
-        for k in range(j + 1):
-            if is_subset(k, j):
-                dI[k, j] = (
-                    -gamma_sum[k] * I[k, j]
-                    - beta_sum[j] * I[k, j]
-                    + (gamma_matrix @ I)[k, j]
-                    + (np.sum(S @ I @ W, axis=0))[k, j]
-                )
+    dI = (
+        -(gamma_sum * I.T).T
+        - beta_sum * I
+        + gamma_matrix @ I
+        + np.sum(S @ I @ W, axis=0)
+    )
 
     dx = map_I_to_x(dI)
 
     return dx
+
+
+def multi_variant_model_with_matrices(t, x, beta, gamma, sigma, V, G, T, S, n):
+    """
+    Computes the derivatives of a multi-variant model with cross-immunity.
+
+    This function computes the derivatives of a multi-variant SIR-like model
+    with cross-immunity.
+
+    Parameters
+    ----------
+    t : float
+        The current time (not used).
+    x : list, or np.ndarray
+        The current state of the system.
+    beta : list, or np.ndarray
+        Vector of transmission rates of the variants.
+    gamma : list, or np.ndarray
+        Vector of recovery rates of the variants.
+    sigma : list of lists, or np.ndarray
+        Matrix of cross-immunity factors.
+    TO_DO: Ergänzen
+
+    Returns
+    -------
+    dx : np.ndarray
+        The derivatives of the state.
+    """
+
+    size = 2**n
+
+    # I = map_x_to_I(x[:-1])
+    I = map_x_to_I(x)
+
+    # Compute the infectious with each variant
+    I_variant = (V @ I @ np.ones((size, 1))).flatten()
+    # Compute the recoveries for each infection set
+    gamma_sum = (V.T @ gamma).flatten()
+    # Compute the transmission factor for each variant
+    transmission_vector = beta * I_variant
+    # TO-DO: Comment
+    beta_sum = ((np.ones_like(V) - V).T @ (transmission_vector)).flatten()
+    W = transmission_vector[:, np.newaxis, np.newaxis] * T
+
+    dI = (
+        -(gamma_sum * I.T).T - beta_sum * I + G @ I + np.sum(S @ I @ W, axis=0)
+    )
+
+    dx = map_I_to_x(dI)
+
+    # S_variant = (np.ones((size, 1)).T @ I @ (np.ones_like(V) - V).T).flatten()
+    # dn = np.sum(beta * S_variant * I_variant)
+    # dx = list(dx)
+    # dx.append(dn)
+
+    return dx
+
 
 def multi_variant_model_with_demographics(t, x, beta, gamma, sigma, b):
     """
@@ -198,16 +252,66 @@ def multi_variant_model_with_demographics(t, x, beta, gamma, sigma, b):
     return dx
 
 
-
-def new_variant_transition_function(t, x,
+def new_variant_transition_function(
+    t,
+    x,
     beta_new=0.18,
     gamma_new=0.1,
     sigma_new=[0.5],
     old_beta=[0.1],
     old_gamma=[0.1],
     old_sigma=[[1]],
-    old_b=.01,
-    jump_rate_bound=0.1,):
+    jump_rate_bound=0.1,
+):
+    # Attention: Works only for two variants after jump
+    flow_args = new_flow_args(
+        t,
+        x,
+        old_beta,
+        old_gamma,
+        old_sigma,
+        beta_new,
+        gamma_new,
+        sigma_new,
+    )
+
+    infectious_with_new_variant = np.zeros_like(x)
+    infectious_with_new_variant[-1] = min(0.001, x[-1])
+    x[-1] = max(x[-1] - 0.001, 0)
+
+    sigma = sigma_new[0]
+    protected_against_new_variant = sigma * x
+    not_protected_against_new_variant = (1 - sigma) * x
+
+    protected_against_new_variant[0] = 0
+    not_protected_against_new_variant[0] = x[0]
+
+    A = map_x_to_I(not_protected_against_new_variant)
+    B = map_x_to_I(protected_against_new_variant)
+    C = map_x_to_I(infectious_with_new_variant)
+
+    n = A.shape[0]
+    zero_matrix = np.zeros((n, n))
+
+    new_I = np.block([[A, B], [zero_matrix, C]])
+
+    x = map_I_to_x(new_I)
+
+    return x, flow_args
+
+
+def new_variant_transition_function_with_demographics(
+    t,
+    x,
+    beta_new=0.18,
+    gamma_new=0.1,
+    sigma_new=[0.5],
+    old_beta=[0.1],
+    old_gamma=[0.1],
+    old_sigma=[[1]],
+    old_b=0.01,
+    jump_rate_bound=0.1,
+):
     # Attention: Works only for two variants after jump
     flow_args = new_flow_args_with_demographics(
         t,
@@ -221,6 +325,114 @@ def new_variant_transition_function(t, x,
         sigma_new,
     )
 
+    infectious_with_new_variant = np.zeros_like(x)
+    infectious_with_new_variant[-1] = min(0.001, x[-1])
+    x[-1] = max(x[-1] - 0.001, 0)
+
+    sigma = sigma_new[0]
+    protected_against_new_variant = sigma * x
+    not_protected_against_new_variant = (1 - sigma) * x
+
+    protected_against_new_variant[0] = 0
+    not_protected_against_new_variant[0] = x[0]
+
+    A = map_x_to_I(not_protected_against_new_variant)
+    B = map_x_to_I(protected_against_new_variant)
+    C = map_x_to_I(infectious_with_new_variant)
+
+    n = A.shape[0]
+    zero_matrix = np.zeros((n, n))
+
+    new_I = np.block([[A, B], [zero_matrix, C]])
+
+    x = map_I_to_x(new_I)
+
+    return x, flow_args
+
+
+def new_variant_transition_function_with_matrices(
+    t,
+    x,
+    beta_new=0.18,
+    gamma_new=0.1,
+    sigma_new=[0.5],
+    old_beta=[0.1],
+    old_gamma=[0.1],
+    old_sigma=[[1]],
+    V=np.array([[0, 1]]),
+    G=np.array([[0, 0.1], [0, 0]]),
+    T=np.array([[[0, 1], [0, 0]]]),
+    S=np.array([[[0, 0], [1, 0]]]),
+    n=1,
+    jump_rate_bound=0.1,
+):
+    # Attention: Works only for two variants after jump
+    flow_args = new_flow_args_with_matrices(
+        t,
+        x,
+        old_beta,
+        old_gamma,
+        old_sigma,
+        V,
+        G,
+        T,
+        S,
+        n,
+        beta_new,
+        gamma_new,
+        sigma_new,
+    )
+
+    infectious_with_new_variant = np.zeros_like(x)
+    infectious_with_new_variant[-1] = min(0.001, x[-1])
+    x[-1] = max(x[-1] - 0.001, 0)
+
+    sigma = sigma_new[0]
+    protected_against_new_variant = sigma * x
+    not_protected_against_new_variant = (1 - sigma) * x
+
+    protected_against_new_variant[0] = 0
+    not_protected_against_new_variant[0] = x[0]
+
+    A = map_x_to_I(not_protected_against_new_variant)
+    B = map_x_to_I(protected_against_new_variant)
+    C = map_x_to_I(infectious_with_new_variant)
+
+    n = A.shape[0]
+    zero_matrix = np.zeros((n, n))
+
+    new_I = np.block([[A, B], [zero_matrix, C]])
+
+    x = map_I_to_x(new_I)
+
+    return x, flow_args
+
+
+def new_variant_transition_function_stochastic(
+    t,
+    x,
+    alpha=10,
+    beta=2,
+    k=1,
+    old_beta=[0.1],
+    old_gamma=[0.1],
+    old_sigma=[[1]],
+    jump_rate_bound=0.1,
+):
+    sigma_new = np.random.beta(alpha, beta)
+    gamma_new = old_gamma[0]
+    beta_new = np.random.normal(old_beta[0], k * sigma_new)
+    # Attention: Works only for two variants after jump
+    flow_args = new_flow_args(
+        t,
+        x,
+        old_beta,
+        old_gamma,
+        old_sigma,
+        beta_new,
+        gamma_new,
+        sigma_new,
+    )
 
     infectious_with_new_variant = np.zeros_like(x)
     infectious_with_new_variant[-1] = min(0.001, x[-1])
@@ -267,8 +479,65 @@ def new_flow_args(
 
     return beta_new, gamma_new, sigma_new
 
+
+def new_flow_args_with_matrices(
+    t,
+    x,
+    old_beta,
+    old_gamma,
+    old_sigma,
+    V,
+    G,
+    T,
+    S,
+    n,
+    beta=0.18,
+    gamma=0.1,
+    sigma=[0.5],
+):
+    # Attention: Works with default arguments for two variants after jump
+    beta_new = np.append(old_beta, beta)
+    gamma_new = np.append(old_gamma, gamma)
+    sigma = np.array(sigma)
+    old_sigma = np.array(old_sigma)
+    sigma = sigma.reshape(-1, 1)
+    sigma_new = np.block([[old_sigma, sigma], [sigma.T, np.array([[1]])]])
+
+    V_new = np.block(
+        [
+            [V, V],
+            [np.zeros((1, V.shape[1])), np.ones((1, V.shape[1]))],
+        ]
+    )
+    G_new = np.block([[G, gamma * np.eye(len(G))], [np.zeros_like(G), G]])
+    T_new = [
+        np.block(
+            [
+                [(1 - sigma[i]) * T[i], sigma[i] * T[i]],
+                [np.zeros_like(T[i]), T[i]],
+            ]
+        )
+        for i in range(len(T))
+    ]
+    T_n = construct_transition_matrix_n(sigma_new[n])
+    T_new.append(T_n)
+    T_new = np.array(T_new)
+    n += 1
+    S_new = np.array([shift_matrix(2**n, 2**m) for m in range(n)])
+
+    return beta_new, gamma_new, sigma_new, V_new, G_new, T_new, S_new, n
+
+
 def new_flow_args_with_demographics(
-    t, x, old_beta, old_gamma, old_sigma, old_b, beta=0.18, gamma=0.1, sigma=[0.5]
+    t,
+    x,
+    old_beta,
+    old_gamma,
+    old_sigma,
+    old_b,
+    beta=0.18,
+    gamma=0.1,
+    sigma=[0.5],
 ):
     # Attention: Works with default arguments for two variants after jump
     beta_new = np.append(old_beta, beta)
@@ -286,7 +555,6 @@ def new_flow_args_with_demographics(
     sigma_new[n, n] = 1  # Setze die untere rechte Ecke auf 1
 
     return beta_new, gamma_new, sigma_new, old_b
-
 
 
 def multi_variant_model_with_total_infections(t, x, beta, gamma, sigma, n):
@@ -582,6 +850,27 @@ def construct_transition_matrix(n, sigma):
     return T
 
 
+def construct_transition_matrix_n(sigma):
+
+    n = len(sigma)
+    size = 2**n
+    T = np.zeros((size, size))
+    sigma = np.array(sigma)
+
+    for i in range(size):
+        if not variant_in_set(n, i):
+            for j in range(size):
+                if is_subset(i, j):
+                    T[i, j] = 1
+                    for m in range(n):
+                        if variant_in_set(m + 1, j - i):
+                            T[i, j] *= sigma[m]
+                        if not variant_in_set(m + 1, j):
+                            T[i, j] *= 1 - sigma[m]
+
+    return T
+
+
 def shift_matrix(size, shift):
 
     return np.eye(size, k=-shift)
@@ -600,3 +889,5 @@ new_variant_transition_function_with_total_infections.returns_jump_rate_bound = 
     True
 )
 new_variant_transition_function.returns_flow_args = True
+new_variant_transition_function_with_demographics.returns_flow_args = True
+new_variant_transition_function_with_matrices.returns_flow_args = True
