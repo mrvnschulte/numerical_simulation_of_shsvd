@@ -20,7 +20,7 @@ class FunctionOfVariableDimension:
             A list of corresponding values at the given time points.
     """
 
-    def __init__(self, times=None, values=None):
+    def __init__(self, times=None, values=None, checks=True):
         """
         Initializes the function with given times and values.
 
@@ -41,8 +41,9 @@ class FunctionOfVariableDimension:
             self.values = []
 
         else:
-            times = self._convert_to_list(times)
-            values = self._convert_to_list(values)
+            if checks:
+                times = self._convert_to_list(times)
+                values = self._convert_to_list(values)
 
             # Check if initialisation is meaningful
             if not (
@@ -53,7 +54,8 @@ class FunctionOfVariableDimension:
             if not (len(times) == len(values)):
                 raise ValueError("Times and values are not of same length")
             for index, value in enumerate(values):
-                values[index] = self._convert_to_list(value)
+                if checks:
+                    values[index] = self._convert_to_list(value)
                 if isinstance(values[index], (list, np.ndarray)):
                     continue
                 else:
@@ -62,17 +64,19 @@ class FunctionOfVariableDimension:
                                      nor can it be converted"
                     )
 
-            times, values = self._delete_double_values(
-                times, values, initialisation=True
-            )
+            if checks:
+                times, values = self._delete_double_values(
+                    times, values, initialisation=True
+                )
 
             self.times = times
             self.values = values
 
             # Sanity checks
-            self._sort()
-            self._check_multiple_jumps()
-            self._check_dimension()
+            if checks:
+                self._sort()
+                self._check_multiple_jumps()
+                self._check_dimension()
 
     def __call__(self, t):
         """
@@ -295,7 +299,7 @@ class FunctionOfVariableDimension:
 
         return value
 
-    def add_values(self, times, values):
+    def add_values(self, times, values, checks=True):
         """
         Adds new time-value pairs to the function.
 
@@ -305,6 +309,8 @@ class FunctionOfVariableDimension:
                 The new time(s) to add.
             values : float, list or array-like
                 The new value(s) corresponding to the times.
+            checks : bool, optional
+                If True, sanity checks are performed.
         """
         # Convert everything to lists
         if isinstance(
@@ -331,15 +337,24 @@ class FunctionOfVariableDimension:
         else:
             values = [values]
 
-        times, values = self._delete_double_values(times, values)
+        if checks:
+            times, values = self._delete_double_values(times, values)
+        elif len(self.times) > 0:
+            if self.times[-1] == times[0] and len(self.values[-1]) == len(
+                values[0]
+            ):
+                if np.allclose(self.values[-1], values[0]):
+                    times = times[1:]
+                    values = values[1:]
 
         self.times = self.times + times
         self.values = self.values + values
 
         # Sanity checks
-        self._sort()
-        self._check_multiple_jumps()
-        self._check_dimension()
+        if checks:
+            self._sort()
+            self._check_multiple_jumps()
+            self._check_dimension()
 
     def delete_values(self, times=None, values=None, indices=None):
         """
@@ -1004,6 +1019,9 @@ class FunctionOfVariableDimension:
         # If t is not provided, return dimension for all times
         if t is None:
             dimension_values = [len(value) for value in self.values]
+            # dimension_values = np.fromiter(
+            #     (len(v) for v in self.values), dtype=int
+            # )
             return dimension_values
 
         # If t is a number, return the dimension at that time
@@ -1091,10 +1109,26 @@ class FunctionOfVariableDimension:
 
         # If the last time of this function equals the first time of the
         # other function, append the times and values
-        elif self.times[-1] == other.times[0]:
-            func = FunctionOfVariableDimension(
-                self.times + other.times, self.values + other.values
-            )
+        elif np.isclose(self.times[-1], other.times[0]):
+            if len(self.values[-1]) == len(other.values[0]):
+                if np.allclose(self.values[-1], other.values[0]):
+                    func = FunctionOfVariableDimension(
+                        self.times + other.times[1:],
+                        self.values + other.values[1:],
+                        checks=False,
+                    )
+                else:
+                    func = FunctionOfVariableDimension(
+                        self.times + other.times,
+                        self.values + other.values,
+                        checks=False,
+                    )
+            else:
+                func = FunctionOfVariableDimension(
+                    self.times + other.times,
+                    self.values + other.values,
+                    checks=False,
+                )
 
         # If the last time of this function is smaller than the first time of
         # the other function, append the times and values if the last and first
@@ -2556,6 +2590,7 @@ class StatsFunctionsOfVariableDimension:
         stepsize=1,
         t_eval=None,
         order=2,
+        collect_dimension=True,
         collect_jump_times=False,
         collect_dimension_jump_times=False,
     ):
@@ -2614,9 +2649,11 @@ class StatsFunctionsOfVariableDimension:
         self.norm_means = np.zeros((len(self.order), len(self.times)))
         self.norm_variances = np.zeros((len(self.order), len(self.times)))
         self.norm_m2 = np.zeros((len(self.order), len(self.times)))
-        self.dimension_means = np.zeros(len(self.times))
-        self.dimension_variances = np.zeros(len(self.times))
-        self.dimension_m2 = np.zeros(len(self.times))
+        self.collect_dimension = collect_dimension
+        if collect_dimension:
+            self.dimension_means = np.zeros(len(self.times))
+            self.dimension_variances = np.zeros(len(self.times))
+            self.dimension_m2 = np.zeros(len(self.times))
         self.cef_means = []
         self.cef_variances = []
         self.cef_m2 = []
@@ -2684,17 +2721,20 @@ class StatsFunctionsOfVariableDimension:
             self.norm_variances[index] = new_variances
 
         # Update dimension means and variances
-        dimension_values = np.array(func.dimension(self.times))
-        old_means = self.dimension_means
-        old_m2 = self.dimension_m2
+        if self.collect_dimension:
+            dimension_values = np.array(func.dimension(self.times))
+            old_means = self.dimension_means
+            old_m2 = self.dimension_m2
 
-        new_means, new_variances, new_m2 = self._update_means_and_variances(
-            dimension_values, old_means, old_m2
-        )
+            new_means, new_variances, new_m2 = (
+                self._update_means_and_variances(
+                    dimension_values, old_means, old_m2
+                )
+            )
 
-        self.dimension_means = new_means
-        self.dimension_m2 = new_m2
-        self.dimension_variances = new_variances
+            self.dimension_means = new_means
+            self.dimension_m2 = new_m2
+            self.dimension_variances = new_variances
 
         # Update means and variances of custom evaluation functions
         for index, evaluation_func in enumerate(
@@ -2875,6 +2915,8 @@ class StatsFunctionsOfVariableDimension:
             fig : FigureObject
                 The figure object created.
         """
+        if not self.collect_dimension:
+            raise ValueError("Cannot plot dimension if it was not collected.")
         fig = plt.figure()
 
         lines = []
@@ -3521,6 +3563,11 @@ class StatsFunctionsOfVariableDimension:
                 "Can only add statistics with same custom "
                 "evaluation functions"
             )
+        if not self.collect_dimension == other.collect_dimension:
+            raise ValueError(
+                "Can only add statistics with both collecting"
+                "dimensions or none"
+            )
         if not (self.collect_jump_times == other.collect_jump_times):
             raise ValueError(
                 "Can only add statistics with both collecting"
@@ -3548,6 +3595,7 @@ class StatsFunctionsOfVariableDimension:
         stats.times = self.times
         stats.order = self.order
         stats.custom_evaluation_functions = self.custom_evaluation_functions
+        stats.collect_dimension = self.collect_dimension
         stats.collect_jump_times = self.collect_jump_times
         stats.collect_dimension_jump_times = self.collect_dimension_jump_times
 
@@ -3576,17 +3624,18 @@ class StatsFunctionsOfVariableDimension:
         )
         stats.norm_variances = stats.norm_m2 / stats.evaluated_functions
 
-        stats.dimension_means, stats.dimension_m2 = self._add_means_and_m2(
-            self.dimension_means,
-            other.dimension_means,
-            self.dimension_m2,
-            other.dimension_m2,
-            self.evaluated_functions,
-            other.evaluated_functions,
-        )
-        stats.dimension_variances = (
-            stats.dimension_m2 / stats.evaluated_functions
-        )
+        if stats.collect_dimension:
+            stats.dimension_means, stats.dimension_m2 = self._add_means_and_m2(
+                self.dimension_means,
+                other.dimension_means,
+                self.dimension_m2,
+                other.dimension_m2,
+                self.evaluated_functions,
+                other.evaluated_functions,
+            )
+            stats.dimension_variances = (
+                stats.dimension_m2 / stats.evaluated_functions
+            )
 
         stats.cef_means, stats.cef_m2 = self._add_means_and_m2(
             self.cef_means,
@@ -3657,6 +3706,11 @@ class StatsFunctionsOfVariableDimension:
                 "Can only subtract statistics with the same "
                 "custom evaluation functions"
             )
+        if not self.collect_dimension == other.collect_dimension:
+            raise ValueError(
+                "Can only add statistics with both collecting"
+                "dimensions or none"
+            )
         if not (self.collect_jump_times == other.collect_jump_times):
             raise ValueError(
                 "Can only subtract statistics with both "
@@ -3693,6 +3747,7 @@ class StatsFunctionsOfVariableDimension:
         stats.times = self.times
         stats.order = self.order
         stats.custom_evaluation_functions = self.custom_evaluation_functions
+        stats.collect_dimension = self.collect_dimension
         stats.collect_jump_times = self.collect_jump_times
         stats.collect_dimension_jump_times = self.collect_dimension_jump_times
 
@@ -3721,19 +3776,20 @@ class StatsFunctionsOfVariableDimension:
         )
         stats.norm_variances = stats.norm_m2 / stats.evaluated_functions
 
-        stats.dimension_means, stats.dimension_m2 = (
-            self._subtract_means_and_m2(
-                self.dimension_means,
-                other.dimension_means,
-                self.dimension_m2,
-                other.dimension_m2,
-                self.evaluated_functions,
-                other.evaluated_functions,
+        if stats.collect_dimension:
+            stats.dimension_means, stats.dimension_m2 = (
+                self._subtract_means_and_m2(
+                    self.dimension_means,
+                    other.dimension_means,
+                    self.dimension_m2,
+                    other.dimension_m2,
+                    self.evaluated_functions,
+                    other.evaluated_functions,
+                )
             )
-        )
-        stats.dimension_variances = (
-            stats.dimension_m2 / stats.evaluated_functions
-        )
+            stats.dimension_variances = (
+                stats.dimension_m2 / stats.evaluated_functions
+            )
 
         stats.cef_means, stats.cef_m2 = self._subtract_means_and_m2(
             self.cef_means,

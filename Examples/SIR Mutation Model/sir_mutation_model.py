@@ -112,6 +112,31 @@ def total_infectious(x):
         return i_ges
 
 
+def total_infectious_added(x):
+    """
+    Computes the total fraction of infectious individuals for a state x.
+
+    Computes the total fraction of infectious individuals for a state x
+    with counting multiply infected multiple times.
+    Parameters
+    ----------
+    x : list, or np.ndarray
+        State of the system.
+
+    Returns
+    -------
+    i_ges : float
+        Fraction of infectious individuals.
+    """
+    if isinstance(x[0], (list, np.ndarray)):
+        i_ges = [total_infectious(y) for y in x]
+        return i_ges
+
+    else:
+        i_ges = sum(x[1::3])
+        return i_ges
+
+
 def mutation_probability(t, x, m=0.5):
     """
     Computes the mutation probability density for a state x.
@@ -131,6 +156,30 @@ def mutation_probability(t, x, m=0.5):
         Mutation probability density.
     """
     i_ges = total_infectious(x)
+    mutation_probability = m * i_ges
+
+    return mutation_probability
+
+
+def mutation_probability_added(t, x, m=0.5):
+    """
+    Computes the mutation probability density for a state x.
+
+    Parameters
+    ----------
+    t : float
+        Time (not used).
+    x : list, or np.ndarray
+        State of the system.
+    m : float, optional
+        Mutation rate. The default is 0.5.
+
+    Returns
+    -------
+    mutation_probability : float
+        Mutation probability density.
+    """
+    i_ges = total_infectious_added(x)
     mutation_probability = m * i_ges
 
     return mutation_probability
@@ -443,7 +492,7 @@ if __name__ == "__main__":
 
     betas = betas * 10
 
-    plt.figure(figsize=(8, 6))
+    plt.figure()
     c = plt.contourf(
         betas,
         mutation_rates,
@@ -459,17 +508,17 @@ if __name__ == "__main__":
         boundaries=boundaries,
         format="%.4f",
     )
-    cb.set_label(label=r"Mean $I_{ges}(1000)$", size=14)
-    cb.ax.tick_params(labelsize=14)
-    plt.ylabel(r"Mutation rate $m$", fontsize=14)
-    plt.xlabel(r"Basic reproduction number $R_0$", fontsize=14)
+    cb.set_label(label=r"Mean $I_{ges}(1000)$", fontsize=12)
+    cb.ax.tick_params(labelsize=10)
+    plt.ylabel(r"Mutation rate $m$", fontsize=12)
+    plt.xlabel(r"Basic reproduction number $R_0$", fontsize=12)
     # plt.title(
     #     r"Mean $I_{ges}(1000)$ for different $R_0$ and mutation rates $m$"
     # )
-    plt.yticks(fontsize=14)  # mutation_rates)
-    plt.xticks(fontsize=14)  # betas)
+    plt.yticks(fontsize=10)  # mutation_rates)
+    plt.xticks(fontsize=10)  # betas)
     plt.plot(betas, critical_m, "red", label="$M_0=1$")
-    plt.legend(fontsize=14)
+    plt.legend(fontsize=10)
     plt.tight_layout()
     plt.savefig("Mean_final_i_countourf.jpg", dpi=dpi)
     plt.show()
@@ -479,31 +528,33 @@ if __name__ == "__main__":
         final_i_values, index=r0s, columns=mutation_rates
     )
     df_final_i.to_csv("Mean_final_i.csv")
-    """
+
     # Set parameters for example plot with extinction
-    t_span = (0, 500)
+    t_span = (0, 2000)
     beta = 0.15
     mutation_rate = 0.2
 
     # Solve example system
     sir_mutation_stats = solve_shsvd(
         sir_model,
-        mutation_probability,
+        mutation_probability_added,
         transition_function,
         x0,
         t_span,
-        mutation_rate,
-        norm_order=[1, 2],
+        mutation_rate * 0.1,  # Speeds up the computation
+        norm_order=[],
+        collect_dimension=False,
         collect_jump_times=True,
+        check_jump_rate=True,
         flow_args=(beta, gamma),
         jump_rate_args=(mutation_rate,),
-        iterations=50,
+        iterations=500,
         custom_evaluation_functions=[
             total_infectious,
-            infectious_with_first_variant,
+            # infectious_with_first_variant,
         ],
-        jump_set_function=extinction_function,
-        jump_set_transition_function=extinction_transition,
+        # jump_set_function=extinction_function,
+        # jump_set_transition_function=extinction_transition,
     )
 
     # Plot example system
@@ -511,7 +562,7 @@ if __name__ == "__main__":
     plt.figure(fig)
     plt.grid()
     plt.title("Plot of overall infectious fraction")
-    plt.xlabel("Overall infectious fraction")
+    plt.ylabel("Overall infectious fraction")
     plt.savefig("Example.jpg", dpi=dpi)
     plt.show()
 
@@ -519,7 +570,7 @@ if __name__ == "__main__":
         [1, 2], density=True, separate_plots=True
     )
     sir_mutation_stats.plot_number_of_jumps()
-
+    """
     # Set parameters for example plot with seasonality and extinction
     t_span = (0, 500)
     beta = 0.15

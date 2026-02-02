@@ -264,7 +264,7 @@ def solve_hsvd(
             method=solve_ivp_method,
             **solve_ivp_options,
         )
-        func.add_values(y.t, y.y.T)
+        func.add_values(y.t, y.y.T, checks=False)
 
         # Set new initial value to value after jump, specified by the
         # corresponding transition function
@@ -300,7 +300,7 @@ def solve_hsvd(
                     jump_set_transition_function.returns_jump_rate_bound,
                 )
                 if t0 not in y.t:
-                    func.add_values(t0, y_jump)
+                    func.add_values(t0, y_jump, checks=False)
             else:
                 values_after_jump = jump_time_transition_function(
                     y.t[-1], y.y.T[-1]
@@ -387,7 +387,7 @@ def solve_hsvd(
         method=solve_ivp_method,
         **solve_ivp_options,
     )
-    func.add_values(y.t, y.y.T)
+    func.add_values(y.t, y.y.T, checks=False)
 
     # If jump set is given, compute solution iteratively until the next time
     # the jump set is reached. Then, set the new value according to the
@@ -424,7 +424,7 @@ def solve_hsvd(
                 jump_set_transition_function.returns_jump_rate_bound,
             )
             if t0 not in y.t:
-                func.add_values(t0, y_jump)
+                func.add_values(t0, y_jump, checks=False)
 
             t_eval_partial = _partial_t_eval(t_eval, t0, tf)
             y = solve_ivp(
@@ -436,7 +436,7 @@ def solve_hsvd(
                 method=solve_ivp_method,
                 **solve_ivp_options,
             )
-            func.add_values(y.t, y.y.T)
+            func.add_values(y.t, y.y.T, checks=False)
 
     if return_args:
         return (
@@ -596,12 +596,12 @@ def solve_shsvd_single_run(
         # Solve solution until next possible jump
         (
             func_partial,
-            flow_args,
-            jump_rate_args,
-            transition_args,
-            jump_time_transition_args,
-            jump_set_args,
-            jump_set_transition_args,
+            new_flow_args,
+            new_jump_rate_args,
+            new_transition_args,
+            new_jump_time_transition_args,
+            new_jump_set_args,
+            new_jump_set_transition_args,
             new_jump_rate_bound,
         ) = solve_hsvd(
             flow_function,
@@ -627,6 +627,7 @@ def solve_shsvd_single_run(
         # Check if jump_rate_bound was violated, if necessary
         if new_jump_rate_bound > jump_rate_bound:
             jump_rate_bound = new_jump_rate_bound
+            t = min(t0 - np.log(r) / jump_rate_bound, end_time)
             continue
 
         if check_jump_rate:
@@ -642,6 +643,13 @@ def solve_shsvd_single_run(
                 jump_rate_bound = max_jump_rate
                 t = min(t0 - np.log(r) / jump_rate_bound, end_time)
                 continue
+
+        flow_args = new_flow_args
+        jump_rate_args = new_jump_rate_args
+        transition_args = new_transition_args
+        jump_time_transition_args = new_jump_time_transition_args
+        jump_set_args = new_jump_set_args
+        jump_set_transition_args = new_jump_set_transition_args
 
         if not store_t0:
             func_partial.delete_values(times=[t0])
@@ -720,6 +728,7 @@ def solve_shsvd(
     stepsize=1,
     t_eval=None,
     norm_order=2,
+    collect_dimension=True,
     collect_jump_times=False,
     collect_dimension_jump_times=False,
     flow_args=None,
@@ -781,6 +790,8 @@ def solve_shsvd(
             Specific times at which to store the computed solution.
         norm_order : int, list or tuple, optional
             The order of the norm(s) to compute (default is 2).
+        collect_dimension : bool, optional
+            If True, compute mean and variance of system dimension.
         collect_jump_times : bool, optional
             If True, collect jump times during evaluation.
         collect_dimension_jump_times : bool, optional
@@ -867,6 +878,7 @@ def solve_shsvd(
         stepsize,
         t_eval=t_eval,
         order=norm_order,
+        collect_dimension=collect_dimension,
         collect_jump_times=collect_jump_times,
         collect_dimension_jump_times=collect_dimension_jump_times,
     )

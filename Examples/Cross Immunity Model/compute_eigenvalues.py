@@ -4,7 +4,7 @@ Created on Mon Oct  6 13:52:35 2025
 
 @author: schulte
 """
-from sympy import symbols, Matrix, simplify
+from sympy import symbols, Matrix, solve
 
 """
 Computes the eigenvalues and eigenvectors of the 2-variant transmission matrix
@@ -121,3 +121,71 @@ FV_invasion = Matrix(
     ]
 ).transpose()
 print(FV_invasion.eigenvals(simplify=True))
+
+# Solve system of next-generation matrix paper
+ny = symbols("ny")
+i = symbols("i1:3")
+print(
+    solve(
+        [
+            beta_1 * i[0] * (1 - i[0] - i[1])
+            - (b + gamma_1) * i[0]
+            + ny * i[0] * i[1],
+            beta_2 * i[1] * (1 - i[0] - i[1])
+            - (b + gamma_2) * i[1]
+            - ny * i[0] * i[1],
+        ],
+        [i[0], i[1]],
+    )
+)
+
+x = symbols("x1:10")
+dx_1 = (
+    -gamma_1 * x[0]
+    - beta_2 * x[0] * (x[2] + x[3] + x[4])
+    + (1 - sigma) * beta_1 * x[5] * (x[0] + x[1] + x[2])
+    - b * x[0]
+)
+dx_2 = (
+    -gamma_1 * x[1]
+    + sigma * beta_1 * x[5] * (x[0] + x[1] + x[2])
+    + beta_1 * x[7] * (x[0] + x[1] + x[2])
+    + gamma_2 * x[2]
+    - b * x[1]
+)
+dx_3 = (
+    -gamma_1 * x[2]
+    - gamma_2 * x[2]
+    + beta_1 * x[3] * (x[0] + x[1] + x[2])
+    + beta_2 * x[0] * (x[2] + x[3] + x[4])
+    - b * x[2]
+)
+dx_4 = (
+    -gamma_2 * x[3]
+    - beta_1 * x[3] * (x[0] + x[1] + x[2])
+    + (1 - sigma) * beta_2 * x[5] * (x[2] + x[3] + x[4])
+    - b * x[3]
+)
+dx_5 = (
+    -gamma_2 * x[4]
+    + sigma * beta_2 * x[5] * (x[2] + x[3] + x[4])
+    + beta_2 * x[6] * (x[2] + x[3] + x[4])
+    + gamma_1 * x[2]
+    - b * x[4]
+)
+dx_6 = (
+    -beta_1 * x[5] * (x[0] + x[1] + x[2])
+    - beta_2 * x[5] * (x[2] + x[3] + x[4])
+    + b
+    - b * x[5]
+)
+dx_7 = -beta_2 * x[6] * (x[2] + x[3] + x[4]) + gamma_1 * x[0] - b * x[6]
+dx_8 = -beta_1 * x[7] * (x[0] + x[1] + x[2]) + gamma_2 * x[3] - b * x[7]
+dx_9 = gamma_1 * x[1] + gamma_2 * x[4] - b * x[8]
+
+solve(
+    [dx_1, dx_2, dx_3, dx_4, dx_5, dx_6, dx_7, dx_8, dx_9],
+    *x,
+    dict=True,
+    simplify=False
+)

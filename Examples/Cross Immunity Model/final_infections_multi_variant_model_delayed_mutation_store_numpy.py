@@ -140,23 +140,39 @@ for idx in plot_indices:
     plt.show()
 
     c = plt.contourf(delays, cross_immunities, final_infections_1[idx])
-    plt.colorbar(c, label="Final number of infections with variant 1")
-    plt.title(
-        "Final number of infections with variant 1\n"
-        rf"($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
+    cb = plt.colorbar(c, label="Final number of infections with variant 1")
+    cb.set_label(
+        label="Final number of infections with variant 1", fontsize=12
     )
-    plt.ylabel(r"Cross-immunity $\sigma$")
-    plt.xlabel(r"Time of mutation")
+    cb.ax.tick_params(labelsize=10)
+    # plt.title(
+    #     "Final number of infections with variant 1\n"
+    #     rf"($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
+    # )
+    plt.ylabel(r"Cross-immunity $\sigma$", fontsize=12)
+    plt.xlabel(r"Time of mutation", fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.tight_layout()
+    plt.savefig("Plots/Final_infections_delay_variant_1.jpg", dpi=dpi)
     plt.show()
 
     c = plt.contourf(delays, cross_immunities, final_infections_2[idx])
-    plt.colorbar(c, label="Final number of infections with variant 2")
-    plt.title(
-        "Final number of infections with variant 2\n"
-        rf"($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
+    cb = plt.colorbar(c, label="Final number of infections with variant 2")
+    cb.set_label(
+        label="Final number of infections with variant 2", fontsize=12
     )
-    plt.ylabel(r"Cross-immunity $\sigma$")
-    plt.xlabel(r"Time of mutation")
+    cb.ax.tick_params(labelsize=10)
+    # plt.title(
+    #     "Final number of infections with variant 2\n"
+    #     rf"($R_0^1=1.5, R_0^2={betas[idx]/gamma_new}, \gamma_1=\gamma_2=0.1$)"
+    # )
+    plt.ylabel(r"Cross-immunity $\sigma$", fontsize=12)
+    plt.xlabel(r"Time of mutation", fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.tight_layout()
+    plt.savefig("Plots/Final_infections_delay_variant_2.jpg", dpi=dpi)
     plt.show()
 
     c = plt.contourf(delays, cross_immunities, final_infections[idx])
