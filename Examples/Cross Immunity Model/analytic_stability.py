@@ -55,39 +55,44 @@ f9 = gamma1 * x2 + gamma2 * x5 - b * x9
 F = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
 xs = [x1, x2, x3, x4, x5, x6, x7, x8, x9]
 
-# ------------------------------------------------------------------
+J = sp.Matrix(F).jacobian(xs)
 
-# Lyapunov-Funktion V(x) = sum_i c_i (x_i - xbar_i - xbar_i ln(x_i/xbar_i))
+print(J)
+sp.print_latex(J)
 
-# ------------------------------------------------------------------
+# # ------------------------------------------------------------------
 
-# Symbole für Gleichgewichtswerte x̄_i und Gewichte c_i
+# # Lyapunov-Funktion V(x) = sum_i c_i (x_i - xbar_i - xbar_i ln(x_i/xbar_i))
 
-xbar = sp.symbols("xbar1:10", positive=True)  # xbar1,...,xbar9
-c = sp.symbols("c1:10", positive=True)  # c1,...,c9
+# # ------------------------------------------------------------------
 
-# V definieren
+# # Symbole für Gleichgewichtswerte x̄_i und Gewichte c_i
 
-V = sum(
-    c[i] * (xs[i] - xbar[i] - xbar[i] * sp.log(xs[i] / xbar[i]))
-    for i in range(9)
-)
+# xbar = sp.symbols("xbar1:10", positive=True)  # xbar1,...,xbar9
+# c = sp.symbols("c1:10", positive=True)  # c1,...,c9
 
-# Ableitung von V entlang der Trajektorien: V̇ = ∑ (∂V/∂x_i) f_i
+# # V definieren
 
-V_dot = sum(sp.diff(V, xs[i]) * F[i] for i in range(9))
+# V = sum(
+#     c[i] * (xs[i] - xbar[i] - xbar[i] * sp.log(xs[i] / xbar[i]))
+#     for i in range(9)
+# )
 
-# Vereinfachen (das kann etwas dauern)
+# # Ableitung von V entlang der Trajektorien: V̇ = ∑ (∂V/∂x_i) f_i
 
-V_dot_simplified = sp.simplify(V_dot)
+# V_dot = sum(sp.diff(V, xs[i]) * F[i] for i in range(9))
 
-print(f"Lyapunov-Funktion V(x): {V}")
-# sp.pprint(V)
+# # Vereinfachen (das kann etwas dauern)
 
-print(f"\nZeitableitung V_dot(x): {V_dot_simplified}")
-# sp.pprint(V_dot_simplified)
+# V_dot_simplified = sp.simplify(V_dot)
 
-grad_V_dot = sp.Matrix([sp.diff(V_dot, xs[i]) for i in range(9)])
-grad_V_dot_simplified = sp.Matrix(
-    [sp.simplify(sp.diff(V_dot, xs[i])) for i in range(9)]
-)
+# print(f"Lyapunov-Funktion V(x): {V}")
+# # sp.pprint(V)
+
+# print(f"\nZeitableitung V_dot(x): {V_dot_simplified}")
+# # sp.pprint(V_dot_simplified)
+
+# grad_V_dot = sp.Matrix([sp.diff(V_dot, xs[i]) for i in range(9)])
+# grad_V_dot_simplified = sp.Matrix(
+#     [sp.simplify(sp.diff(V_dot, xs[i])) for i in range(9)]
+# )

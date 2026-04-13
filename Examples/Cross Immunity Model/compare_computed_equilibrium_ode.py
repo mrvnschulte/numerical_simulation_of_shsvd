@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import root
+import sympy as sp
 
 from invasion_reproduction_number import invasion_reproduction_number
 
@@ -643,10 +644,10 @@ def sample_parameters(rng):
     b = rng.uniform(0.01, 0.1)
     return dict(
         sigma=sigma,
-        beta_1=beta1,
-        beta_2=beta2,
-        gamma_1=gamma1,
-        gamma_2=gamma2,
+        beta1=beta1,
+        beta2=beta2,
+        gamma1=gamma1,
+        gamma2=gamma2,
         b=b,
     )
 
@@ -656,29 +657,45 @@ def check_parameter_sets(
 ):
     rng = np.random.default_rng(seed=42)
 
-    tf = 2000
+    tf = 5000
 
     valid_stats = []
 
+    # Symbolic variables
+
+    x1, x2, x3, x4, x5, x6, x7, x8, x9 = sp.symbols(
+        "x1 x2 x3 x4 x5 x6 x7 x8 x9"
+    )
+    gamma1, gamma2, beta1, beta2, sigma, b = sp.symbols(
+        "gamma1 gamma2 beta1 beta2 sigma b", positive=True
+    )
+
+    xs = [x1, x2, x3, x4, x5, x6, x7, x8, x9]
+
+    F = two_variant_model(0, xs, beta1, beta2, gamma1, gamma2, sigma, b)
+
+    J = sp.Matrix(F).jacobian(xs)
+
     cycles = 0
     while len(valid_stats) < N_target_sets:
+        rng = np.random.default_rng(seed=cycles)
         cycles += 1
         params = sample_parameters(rng)
-        sigma = params["sigma"]
-        beta_1 = params["beta_1"]
-        beta_2 = params["beta_2"]
-        gamma_1 = params["gamma_1"]
-        gamma_2 = params["gamma_2"]
-        b = params["b"]
+        sigma_val = params["sigma"]
+        beta_1 = params["beta1"]
+        beta_2 = params["beta2"]
+        gamma_1 = params["gamma1"]
+        gamma_2 = params["gamma2"]
+        b_val = params["b"]
 
         # Reproduction numbers
-        r_01 = beta_1 / (gamma_1 + b)
-        r_02 = beta_2 / (gamma_2 + b)
+        r_01 = beta_1 / (gamma_1 + b_val)
+        r_02 = beta_2 / (gamma_2 + b_val)
         r_012 = invasion_reproduction_number(
-            beta_1 / (gamma_1 + b), beta_2 / (gamma_2 + b), sigma
+            beta_1 / (gamma_1 + b_val), beta_2 / (gamma_2 + b_val), sigma_val
         )
         r_021 = invasion_reproduction_number(
-            beta_2 / (gamma_2 + b), beta_1 / (gamma_1 + b), sigma
+            beta_2 / (gamma_2 + b_val), beta_1 / (gamma_1 + b_val), sigma_val
         )
 
         if not (r_012 > threshold_r0 and r_021 > threshold_r0):
@@ -687,12 +704,44 @@ def check_parameter_sets(
         sol = root(
             equation,
             [1, 1],
-            args=(sigma, beta_1, beta_2, gamma_1, gamma_2, b),
+            args=(sigma_val, beta_1, beta_2, gamma_1, gamma_2, b_val),
             method="hybr",
         )
+        if min(sol.x) < 1e-3:
+            continue
         x_star = np.array(
-            x_bar(sol.x, sigma, beta_1, beta_2, gamma_1, gamma_2, b)
+            x_bar(sol.x, sigma_val, beta_1, beta_2, gamma_1, gamma_2, b_val)
         )
+
+        x_star_dict = {
+            x1: x_star[0],
+            x2: x_star[1],
+            x3: x_star[2],
+            x4: x_star[3],
+            x5: x_star[4],
+            x6: x_star[5],
+            x7: x_star[6],
+            x8: x_star[7],
+            x9: x_star[8],
+            b: b_val,
+            beta1: beta_1,
+            beta2: beta_2,
+            gamma1: gamma_1,
+            gamma2: gamma_2,
+            sigma: sigma_val,
+        }
+
+        J_num = J.subs(x_star_dict)
+        J_num = np.array(J_num.evalf().tolist(), dtype=float)
+
+        eigvals = np.linalg.eigvals(J_num)
+        max_real_part = np.max(eigvals.real)
+        # if max_real_part > 0:
+        #     print(rf"\nR_{{0,1\to2}}={r_012}")
+        #     print(rf"R_{{0,2\to1}}={r_021}")
+        #     print(max_real_part)
+        #     print(sol.x)
+        # valid_stats.append(max_real_part)
 
         x0_list = rng.dirichlet(alpha=np.ones(9), size=N_startpoints)
 
@@ -703,7 +752,7 @@ def check_parameter_sets(
                 two_variant_model,
                 (0, tf),
                 x0,
-                args=(beta_1, beta_2, gamma_1, gamma_2, sigma, b),
+                args=(beta_1, beta_2, gamma_1, gamma_2, sigma_val, b_val),
                 vectorized=False,
             )
             final_x = sol_ode.y.T[-1]
@@ -711,6 +760,12 @@ def check_parameter_sets(
                 continue
             final_states.append(final_x)
             dist_to_xstar.append(np.linalg.norm(final_x - x_star))
+            if np.linalg.norm(final_x - x_star) > 1e-3:
+                plt.plot(sol_ode.t, sol_ode.y.T)
+                for xi in x_star:
+                    plt.axhline(xi, color="blue")
+                plt.show()
+
         #     if len(valid_stats) == 2:
         #         print(f"Final state: {final_x}")
         #         print(
@@ -746,7 +801,11 @@ def check_parameter_sets(
             "r_02": r_02,
             "r_012": r_012,
             "r_021": r_021,
+            "max_eigval": max_real_part,
         }
+        if stats["max_dist"] > 1e-3:
+            print(sol.x)
+            plt.plot()
         valid_stats.append(stats)
 
         if verbose:
@@ -760,9 +819,19 @@ def check_parameter_sets(
         [s["set"] for s in valid_stats], [s["max_dist"] for s in valid_stats]
     )
     plt.xlabel("Index of parameter set")
-    plt.ylabel(r"Maximal distance $||x(2000) - \bar x||$")
+    plt.ylabel(r"Maximal distance $||x(5000) - \bar x||$")
     plt.tight_layout()
     plt.savefig(filename, dpi=500)
+    plt.show()
+
+    plt.scatter(
+        [s["set"] for s in valid_stats], [s["max_eigval"] for s in valid_stats]
+    )
+    plt.axhline(color="grey", linestyle="dotted")
+    plt.xlabel("Index of parameter set")
+    plt.ylabel(r"Maximal real part of eigenvalues$")
+    plt.tight_layout()
+    plt.savefig(f"{filename.replace('.jpg','')}_eigval.jpg", dpi=500)
     plt.show()
 
     max_val = max([min(s["r_012"], s["r_021"]) for s in valid_stats])
@@ -771,76 +840,72 @@ def check_parameter_sets(
     plt.xlabel("Lower invasion reproduction number")
     plt.ylabel("Number of parameter sets")
     plt.tight_layout()
-    plt.savefig(f"{filename}_stats.jpg", dpi=500)
+    plt.savefig(f"{filename.replace('.jpg','')}_stats.jpg", dpi=500)
     plt.show()
 
+    print(max([s["max_eigval"] for s in valid_stats]))
 
-sigma = 0.7
+
+### STEP 1: Check for given parameters and multiple initial values
+
+sigma = 0.8
 beta_1 = 0.3
 beta_2 = 0.35
 gamma_1 = 0.1
 gamma_2 = 0.1
 b = 0.01
 
-### STEP 1: Check for given parameters and multiple initial values
 
-# np.random.seed(42)
-# N_initial_values = 1000
-# x0_list = random_simplex_points(N_initial_values, dim=9)
+np.random.seed(42)
+N_initial_values = 100000
+x0_list = random_simplex_points(N_initial_values, dim=9)
 
-# sol = root(
-#     equation,
-#     [1, 1],
-#     args=(sigma, beta_1, beta_2, gamma_1, gamma_2, b),
-#     method="hybr",
-# )
-# x_star = np.array(x_bar(sol.x, sigma, beta_1, beta_2, gamma_1, gamma_2, b))
+sol = root(
+    equation,
+    [1, 1],
+    args=(sigma, beta_1, beta_2, gamma_1, gamma_2, b),
+    method="hybr",
+)
+x_star = np.array(x_bar(sol.x, sigma, beta_1, beta_2, gamma_1, gamma_2, b))
 
-# tf = 1000
-# results_final = []
-# distances = []
-# for i in range(N_initial_values):
-#     x0 = x0_list[i]
-#     sol_ode = solve_ivp(
-#         two_variant_model,
-#         (0, tf),
-#         x0,
-#         args=(beta_1, beta_2, gamma_1, gamma_2, sigma, b),
-#         vectorized=False,
-#     )
-#     final_x = sol_ode.y.T[-1]
-#     results_final.append(final_x)
+tf = 1000
+results_final = []
+distances = []
+for i in range(N_initial_values):
+    x0 = x0_list[i]
+    sol_ode = solve_ivp(
+        two_variant_model,
+        (0, tf),
+        x0,
+        args=(beta_1, beta_2, gamma_1, gamma_2, sigma, b),
+        vectorized=False,
+    )
+    final_x = sol_ode.y.T[-1]
+    results_final.append(final_x)
 
-#     dist = np.linalg.norm(final_x - x_star)
-#     distances.append(dist)
+    dist = np.linalg.norm(final_x - x_star)
+    distances.append(dist)
 
-# distances = np.array(distances)
+distances = np.array(distances)
 
-# print("Mean distance to x_star:", distances.mean())
-# print("Maximal distance to x_star:", max(distances))
+print("Mean distance to x_star:", distances.mean())
+print("Maximal distance to x_star:", max(distances))
 
-# results_final = np.array(results_final)
-# plt.scatter(range(N_initial_values), distances)
-# plt.xlabel("Index of initial value")
-# plt.ylabel(r"Distance $||x(1000) - \bar x||$")
-# plt.tight_layout()
-# plt.savefig("Distance_different_initial_values.jpg", dpi=500)
-# plt.show()
+results_final = np.array(results_final)
+plt.scatter(range(N_initial_values), distances)
+plt.xlabel("Index of initial value")
+plt.ylabel(r"Distance $||x(1000) - \bar x||$")
+plt.tight_layout()
+plt.savefig("Plots/Distance_different_initial_values.jpg", dpi=500)
+plt.show()
 
 
 ### STEP 2: Check for mutliple parameter sets and initial values
 
-N_target_sets = 500
-N_startpoints = 20
+N_target_sets = 1000
+N_startpoints = 100
 threshold_r0 = 1
-filename = f"Distance_different_parameters_{threshold_r0}.jpg"
-
-check_parameter_sets(
-    N_target_sets, N_startpoints, threshold_r0, filename, verbose=True
-)
-
-threshold_r0 = 1.1
-filename = f"Distance_different_parameters_{threshold_r0}.jpg"
+filename = f"Distance_different_parameters_{threshold_r0}_test.jpg"
 
 check_parameter_sets(
     N_target_sets, N_startpoints, threshold_r0, filename, verbose=True

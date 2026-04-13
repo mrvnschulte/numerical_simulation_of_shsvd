@@ -99,9 +99,7 @@ def multi_variant_model(t, x, beta, gamma, sigma):
     I = map_x_to_I(x)
     # dI = np.zeros_like(I)
 
-    V = variant_in_set_matrix(n)  # It could be beneficial to store these
-    # matrices in a class at their first evaluation instead of constructing it
-    # in every step
+    V = variant_in_set_matrix(n)
 
     # Compute the infectious with each variant
     I_variant = (V @ I @ np.ones((size, 1))).flatten()
@@ -128,8 +126,120 @@ def multi_variant_model(t, x, beta, gamma, sigma):
     return dx
 
 
+def multi_variant_model_for_loops(t, x, beta, gamma, sigma):
+    """
+    Computes the derivatives of a multi-variant model with cross-immunity.
+
+    This function computes the derivatives of a multi-variant SIR-like model
+    with cross-immunity.
+
+    Parameters
+    ----------
+    t : float
+        The current time (not used).
+    x : list, or np.ndarray
+        The current state of the system.
+    beta : list, or np.ndarray
+        Vector of transmission rates of the variants.
+    gamma : list, or np.ndarray
+        Vector of recovery rates of the variants.
+    sigma : list of lists, or np.ndarray
+        Matrix of cross-immunity factors.
+
+    Returns
+    -------
+    dx : np.ndarray
+        The derivatives of the state.
+    """
+
+    # Compute number of variants and number of protection/infection groups
+    n = int(round(np.log(len(x)) / np.log(3)))
+    size = 2**n
+
+    # Transform state vector into corresponding matrix
+    I = map_x_to_I(x)
+    dI = np.zeros_like(I)
+
+    # V = variant_in_set_matrix(n)  # It could be beneficial to store these
+    # # matrices in a class at their first evaluation instead of constructing it
+    # # in every step
+
+    # # Compute the infectious with each variant
+    # I_variant = (V @ I @ np.ones((size, 1))).flatten()
+    # # Compute the recoveries for each infection set
+    # gamma_sum = (V.T @ gamma).flatten()
+    # # Compute the transmission factor for each variant
+    # transmission_vector = beta * I_variant
+    # # TO-DO: Comment
+    # beta_sum = ((np.ones_like(V) - V).T @ (transmission_vector)).flatten()
+    # gamma_matrix = compute_gamma_matrix(n, gamma)
+    # T = construct_transition_matrix(n, sigma)
+    # S = np.array([shift_matrix(size, 2**m) for m in range(n)])
+    # W = transmission_vector[:, np.newaxis, np.newaxis] * T
+
+    # dI = (
+    #     -(gamma_sum * I.T).T
+    #     - beta_sum * I
+    #     + gamma_matrix @ I
+    #     + np.sum(S @ I @ W, axis=0)
+    # )
+    I_variant = np.zeros(n)
+    for k in range(n):
+        for i in range(size):
+            if variant_in_set(k + 1, i):
+                for j in range(size):
+                    if is_subset(i, j):
+                        I_variant[k] += I[i, j]
+
+    sigma_trans = np.ones((n, size, size))
+    for k in range(n):
+        for i in range(size):
+            if not variant_in_set(k + 1, i):
+                for j in range(size):
+                    if variant_in_set(k + 1, j) and is_subset(i, j):
+                        for m in range(n):
+                            if m != k:
+                                if variant_in_set(
+                                    m + 1, j
+                                ) and not variant_in_set(m + 1, i):
+                                    sigma_trans[k, i, j] *= sigma[k, m]
+                                if not variant_in_set(m + 1, j):
+                                    sigma_trans[k, i, j] *= 1 - sigma[k, m]
+
+    for i in range(size):
+        for j in range(size):
+            if is_subset(i, j):
+                for k in range(n):
+                    if variant_in_set(k + 1, i):
+                        dI[i, j] -= gamma[k] * I[i, j]
+                        i_minus_k = i ^ (2**k)
+                        for l in range(size):
+                            if (
+                                is_subset(i_minus_k, l)
+                                and is_subset(l, j)
+                                and not variant_in_set(k + 1, l)
+                            ):
+                                dI[i, j] += (
+                                    sigma_trans[k, l, j]
+                                    * beta[k]
+                                    * I[i_minus_k, l]
+                                    * I_variant[k]
+                                )
+                    if not variant_in_set(k + 1, j):
+                        dI[i, j] -= beta[k] * I[i, j] * I_variant[k]
+                    if not variant_in_set(k + 1, i) and variant_in_set(
+                        k + 1, j
+                    ):
+                        i_plus_k = i ^ (2**k)
+                        dI[i, j] += gamma[k] * I[i_plus_k, j]
+
+    dx = map_I_to_x(dI)
+
+    return dx
+
+
 def multi_variant_model_with_matrices(
-    t, x, beta, gamma, sigma, V, G, T, S, n, compute_dn=True
+    t, x, beta, gamma, sigma, V, G, T, S, n, b=0, compute_dn=True
 ):
     """
     Computes the derivatives of a multi-variant model with cross-immunity.
@@ -175,8 +285,13 @@ def multi_variant_model_with_matrices(
     W = transmission_vector[:, np.newaxis, np.newaxis] * T
 
     dI = (
-        -(gamma_sum * I.T).T - beta_sum * I + G @ I + np.sum(S @ I @ W, axis=0)
+        -(gamma_sum * I.T).T
+        - beta_sum * I
+        + G @ I
+        + np.sum(S @ I @ W, axis=0)
+        - b * I
     )
+    dI[0, 0] += b
 
     dx = map_I_to_x(dI)
 
@@ -371,6 +486,7 @@ def new_variant_transition_function_with_matrices(
     T=np.array([[[0, 1], [0, 0]]]),
     S=np.array([[[0, 0], [1, 0]]]),
     variants=1,
+    old_b=0,
     jump_rate_bound=0.1,
     mutant_variant=-1,
     extinction_threshold=0,
@@ -389,6 +505,7 @@ def new_variant_transition_function_with_matrices(
         T,
         S,
         variants,
+        old_b,
         beta_new,
         gamma_new,
         sigma_new,
@@ -445,6 +562,7 @@ def new_variant_transition_function_stochastic(
     T=np.array([[[0, 1], [0, 0]]]),
     S=np.array([[[0, 0], [1, 0]]]),
     variants=1,
+    old_b=0,
     extinction_threshold=0.05,
     V_js=np.array([[0, 1]]),
     variants_js=1,
@@ -477,6 +595,7 @@ def new_variant_transition_function_stochastic(
         T,
         S,
         variants,
+        old_b,
         jump_rate_bound,
         mutated_variant,
         extinction_threshold,
@@ -487,6 +606,16 @@ def new_variant_transition_function_stochastic(
         flow_args[3],
         variants + 1,
     )
+
+    if variants == 5:
+        x, flow_args, jump_set_args = (
+            extinction_transition_function_least_transmissible(
+                t,
+                x,
+                *flow_args,
+                extinction_threshold,
+            )
+        )
 
     return x, flow_args, jump_set_args
 
@@ -523,6 +652,7 @@ def new_flow_args_with_matrices(
     T,
     S,
     n,
+    old_b=0,
     beta=0.18,
     gamma=0.1,
     sigma=[0.5],
@@ -557,7 +687,7 @@ def new_flow_args_with_matrices(
     n += 1
     S_new = np.array([shift_matrix(2**n, 2**m) for m in range(n)])
 
-    return beta_new, gamma_new, sigma_new, V_new, G_new, T_new, S_new, n
+    return beta_new, gamma_new, sigma_new, V_new, G_new, T_new, S_new, n, old_b
 
 
 def new_flow_args_with_demographics(
@@ -726,7 +856,7 @@ def total_infections(x):
     return infections
 
 
-def map_x_to_I(x):
+def map_x_to_I(x, dtype=None):
     """
     Maps vector representation x to matrix representation I
 
@@ -743,7 +873,7 @@ def map_x_to_I(x):
 
     n = int(round(np.log(len(x)) / np.log(3)))
 
-    I = np.zeros((2**n, 2**n))
+    I = np.zeros((2**n, 2**n), dtype=dtype)
 
     counter = 0
 
@@ -756,7 +886,7 @@ def map_x_to_I(x):
     return I
 
 
-def map_I_to_x(I):
+def map_I_to_x(I, dtype=None):
     """
     Maps matrix representation I back to vector representation x
 
@@ -776,7 +906,7 @@ def map_I_to_x(I):
 
     # Berechne die Länge des Vektors x
     length_x = 3**n  # Anzahl der nicht-null Einträge
-    x = np.zeros(length_x)  # Initialisiere den Vektor x
+    x = np.zeros(length_x, dtype=dtype)  # Initialisiere den Vektor x
 
     counter = 0  # Zähler für den Vektor x
 
@@ -844,9 +974,10 @@ def variant_in_set_matrix(n):
     return V
 
 
-def compute_gamma_matrix(n, gamma):
+def compute_gamma_matrix(n, gamma, dtype=None):
+    # Determine n based on gamma?
     # Basisfall: A_1
-    A_n = np.array([[0, gamma[0]], [0, 0]])
+    A_n = np.array([[0, gamma[0]], [0, 0]], dtype=dtype)
 
     for i in range(1, n):
         # Größe von A_n bestimmen
@@ -861,10 +992,10 @@ def compute_gamma_matrix(n, gamma):
     return A_n
 
 
-def construct_transition_matrix(n, sigma):
+def construct_transition_matrix(n, sigma, dtype=None):
 
     size = 2**n
-    T = np.zeros((n, size, size))
+    T = np.zeros((n, size, size), dtype=dtype)
     sigma = np.array(sigma)
 
     for k in range(n):
@@ -925,6 +1056,17 @@ def mutation_probability_function_multiple_mutations(t, x, mutation_rate=0.1):
     return mutation_probability
 
 
+def mutation_probability_function_multiple_mutations_no_dn(
+    t, x, mutation_rate=0.1
+):
+
+    I = map_x_to_I(x)
+    infectious = np.sum(I[1:])
+    mutation_probability = mutation_rate * infectious
+
+    return mutation_probability
+
+
 def extinction_function(
     t, x, extinction_threshold=0.0005, V=np.array([[0, 1]]), variants=1
 ):
@@ -952,6 +1094,7 @@ def extinction_transition_function(
     T=np.array([[[0, 1], [0, 0]]]),
     S=np.array([[[0, 0], [1, 0]]]),
     variants=1,
+    old_b=0,
     extinction_threshold=0.005,
     V_js=np.array([[0, 1]]),
     variants_js=1,
@@ -997,6 +1140,81 @@ def extinction_transition_function(
         T_new,
         S_new,
         variants - 1,
+        old_b,
+    )
+
+    I_new = I[sets_with_extinct_variant] + I[~sets_with_extinct_variant]
+    I_new = (
+        I_new[:, sets_with_extinct_variant]
+        + I_new[:, ~sets_with_extinct_variant]
+    )
+    x_new = map_I_to_x(I_new)
+    x_new = np.append(x_new, x[-1])
+
+    jump_set_args = (extinction_threshold, V_new, variants - 1)
+
+    return x_new, flow_args, jump_set_args
+
+
+def extinction_transition_function_least_transmissible(
+    t,
+    x,
+    old_beta=[0.1],
+    old_gamma=[0.1],
+    old_sigma=[[1]],
+    V=np.array([[0, 1]]),
+    G=np.array([[0, 0.1], [0, 0]]),
+    T=np.array([[[0, 1], [0, 0]]]),
+    S=np.array([[[0, 0], [1, 0]]]),
+    variants=1,
+    old_b=0,
+    extinction_threshold=0.005,
+    V_js=np.array([[0, 1]]),
+    variants_js=1,
+    jump_rate_bound=0.1,
+):
+
+    size = 2**variants
+    I = map_x_to_I(x[:-1])
+    I_variant = (V @ I @ np.ones((size, 1))).flatten()
+
+    r0 = np.array(old_beta) / np.array(old_gamma)
+    extinct_variant = np.argmin(r0)
+
+    beta_new = np.delete(old_beta, extinct_variant)
+    gamma_new = np.delete(old_gamma, extinct_variant)
+    sigma_new = np.delete(
+        np.delete(old_sigma, extinct_variant, axis=0), extinct_variant, axis=1
+    )
+    half_size = size // 2
+    V_new = V[: variants - 1, :half_size]
+    sets_with_extinct_variant = V[extinct_variant] == 0
+    G_new = G[np.ix_(sets_with_extinct_variant, sets_with_extinct_variant)]
+    T_new = np.delete(T, extinct_variant, axis=0)
+    T_new = np.array(
+        [
+            np.array(T_i)[
+                np.ix_(sets_with_extinct_variant, sets_with_extinct_variant)
+            ]
+            + np.array(T_i)[
+                np.ix_(sets_with_extinct_variant, ~sets_with_extinct_variant)
+            ]
+            for T_i in T_new
+        ]
+    )
+    S_new = np.array(
+        [shift_matrix(2 ** (variants - 1), 2**m) for m in range(variants - 1)]
+    )
+    flow_args = (
+        beta_new,
+        gamma_new,
+        sigma_new,
+        V_new,
+        G_new,
+        T_new,
+        S_new,
+        variants - 1,
+        old_b,
     )
 
     I_new = I[sets_with_extinct_variant] + I[~sets_with_extinct_variant]
@@ -1020,6 +1238,15 @@ def total_infections_new(x):
         infections = x[-1]
 
     return infections
+
+
+def total_infectious(x):
+    if isinstance(x[0], (list, np.ndarray)):
+        infectious = [total_infectious(y) for y in x]
+    else:
+        I = map_x_to_I(x)
+        infectious = np.sum(I[1:])
+    return infectious
 
 
 new_variant_transition_function_with_total_infections.returns_flow_args = True

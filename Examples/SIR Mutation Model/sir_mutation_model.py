@@ -367,214 +367,217 @@ def infectious_with_first_variant(x):
 
 
 if __name__ == "__main__":
-    # Set parameters
-    x0 = [0.999, 0.001, 0]
-    tf = 1000
-    t_span = (0, tf)
-    betas = 0.01 * np.arange(11, 26)
-    r0s = betas * 10
-    r0s = np.round(r0s, 1)
-    gamma = 0.1
-    mutation_rates = [
-        0.01,
-        0.1,
-        0.11,
-        0.12,
-        0.13,
-        0.14,
-        0.15,
-        0.16,
-        0.17,
-        0.18,
-        0.19,
-        0.2,
-        0.25,
-        0.3,
-        0.35,
-        0.4,
-        0.5,
-        0.6,
-    ]
-    dpi = 500
-    tol = 1e-2
-    file_name = "Mean_final_i.csv"
+    # # Set parameters
+    # x0 = [0.999, 0.001, 0]
+    # tf = 1000
+    # t_span = (0, tf)
+    # betas = 0.01 * np.arange(11, 26)
+    # r0s = betas * 10
+    # r0s = np.round(r0s, 1)
+    # gamma = 0.1
+    # mutation_rates = [
+    #     0.01,
+    #     0.1,
+    #     0.11,
+    #     0.12,
+    #     0.13,
+    #     0.14,
+    #     0.15,
+    #     0.16,
+    #     0.17,
+    #     0.18,
+    #     0.19,
+    #     0.2,
+    #     0.25,
+    #     0.3,
+    #     0.35,
+    #     0.4,
+    #     0.5,
+    #     0.6,
+    # ]
+    # dpi = 500
+    # tol = 1e-2
+    # file_name = "Mean_final_i.csv"
 
-    # Read old data and initialise matrix for new one
-    if os.path.exists(file_name):
-        df_final_i_old = pd.read_csv("Mean_final_i.csv", index_col=0)
-    else:
-        df_final_i_old = pd.DataFrame()
-    df_final_i_old.columns = df_final_i_old.columns.astype(float)
-    final_i_values = np.zeros((len(betas), len(mutation_rates)))
+    # # Read old data and initialise matrix for new one
+    # if os.path.exists(file_name):
+    #     df_final_i_old = pd.read_csv("Mean_final_i.csv", index_col=0)
+    # else:
+    #     df_final_i_old = pd.DataFrame()
+    # df_final_i_old.columns = df_final_i_old.columns.astype(float)
+    # final_i_values = np.zeros((len(betas), len(mutation_rates)))
 
-    # Compute results by either using old data or computing new one, if no old is
-    # available
-    for i, r0 in enumerate(r0s):
-        for j, mutation_rate in enumerate(mutation_rates):
-            if (
-                r0 in df_final_i_old.index
-                and mutation_rate in df_final_i_old.columns
-            ):
-                final_i_values[i, j] = df_final_i_old.loc[r0, mutation_rate]
-            else:
-                sir_mutation_stats = solve_shsvd(
-                    sir_model,
-                    mutation_probability,
-                    transition_function,
-                    x0,
-                    t_span,
-                    mutation_rate,
-                    norm_order=[1, 2],
-                    collect_jump_times=True,
-                    flow_args=(r0 * gamma, gamma),
-                    jump_rate_args=(mutation_rate,),
-                    tol=tol,
-                    min_iterations=50,
-                    custom_evaluation_functions=[total_infectious],
-                    convergence_estimate=("cef", 0),
-                    convergence_estimate_type=(("time", tf),),
-                )
-                # sir_mutation_stats.plot_cefs()
-                final_i_values[i, j] = sir_mutation_stats.cef_means[0][-1]
-            print(f"Finished computation for r0={r0} and m={mutation_rate}")
+    # # Compute results by either using old data or computing new one, if no old is
+    # # available
+    # for i, r0 in enumerate(r0s):
+    #     for j, mutation_rate in enumerate(mutation_rates):
+    #         if (
+    #             r0 in df_final_i_old.index
+    #             and mutation_rate in df_final_i_old.columns
+    #         ):
+    #             final_i_values[i, j] = df_final_i_old.loc[r0, mutation_rate]
+    #         else:
+    #             sir_mutation_stats = solve_shsvd(
+    #                 sir_model,
+    #                 mutation_probability,
+    #                 transition_function,
+    #                 x0,
+    #                 t_span,
+    #                 mutation_rate,
+    #                 norm_order=[1, 2],
+    #                 collect_jump_times=True,
+    #                 flow_args=(r0 * gamma, gamma),
+    #                 jump_rate_args=(mutation_rate,),
+    #                 tol=tol,
+    #                 min_iterations=50,
+    #                 custom_evaluation_functions=[total_infectious],
+    #                 convergence_estimate=("cef", 0),
+    #                 convergence_estimate_type=(("time", tf),),
+    #             )
+    #             # sir_mutation_stats.plot_cefs()
+    #             final_i_values[i, j] = sir_mutation_stats.cef_means[0][-1]
+    #         print(f"Finished computation for r0={r0} and m={mutation_rate}")
 
-    # Set color map
-    ticks = [0, 0.0005, 0.001, 0.05, 0.1, 1]
-    lower_section = [0, 0.001]
-    middle_section = [0.001, 0.1]
-    upper_section = [0.1, 1]
+    # # Set color map
+    # ticks = [0, 0.0005, 0.001, 0.05, 0.1, 1]
+    # lower_section = [0, 0.001]
+    # middle_section = [0.001, 0.1]
+    # upper_section = [0.1, 1]
 
-    cmap = plt.colormaps["PiYG"]
-    boundaries = (
-        list(np.linspace(lower_section[0], lower_section[1], 22))
-        + list(np.linspace(middle_section[0], middle_section[1], 16))
-        + list(np.linspace(upper_section[0], upper_section[1], 6))
-    )
-    levels = (
-        list(np.linspace(lower_section[0], lower_section[1], 22))
-        + list(np.linspace(middle_section[0] * 1.01, middle_section[1], 16))
-        + list(np.linspace(upper_section[0] * 1.01, upper_section[1], 6))
-    )
-    norm = BoundaryNorm(boundaries, cmap.N, clip=True)
-
-    # Compute critical m for which empv=1
-    critical_m = np.zeros(len(betas))
-    for i, beta in enumerate(betas):
-        r_final = final_recovered(beta / gamma, x0[0])
-        critical_m[i] = gamma / r_final
-
-    # Plot results as meshplot and contour plot
-    plt.figure(figsize=(8, 6))
-    c = plt.pcolormesh(
-        betas,
-        mutation_rates,
-        final_i_values.T,
-        shading="auto",
-        cmap=cmap,
-        norm=norm,
-    )
-    plt.colorbar(
-        c,
-        label="Mean Final I",
-        ticks=ticks,
-        boundaries=boundaries,
-        format="%.4f",
-    )
-    plt.ylabel("Mutation Rate")
-    plt.xlabel("Beta")
-    plt.title("Mean Final I for Different Betas and Mutation Rates")
-    plt.yticks(mutation_rates)
-    plt.xticks(betas)
-    plt.plot(betas, critical_m, "red")
-    plt.tight_layout()
-    plt.savefig("Mean_final_i_meshplot.jpg", dpi=dpi)
-    plt.show()
-
-    betas = betas * 10
-
-    plt.figure()
-    c = plt.contourf(
-        betas,
-        mutation_rates,
-        final_i_values.T,
-        levels=levels,
-        cmap=cmap,
-        norm=norm,
-    )
-    cb = plt.colorbar(
-        c,
-        label=r"Mean $I_{ges}(1000)$",
-        ticks=ticks,
-        boundaries=boundaries,
-        format="%.4f",
-    )
-    cb.set_label(label=r"Mean $I_{ges}(1000)$", fontsize=12)
-    cb.ax.tick_params(labelsize=10)
-    plt.ylabel(r"Mutation rate $m$", fontsize=12)
-    plt.xlabel(r"Basic reproduction number $R_0$", fontsize=12)
-    # plt.title(
-    #     r"Mean $I_{ges}(1000)$ for different $R_0$ and mutation rates $m$"
+    # cmap = plt.colormaps["PiYG"]
+    # boundaries = (
+    #     list(np.linspace(lower_section[0], lower_section[1], 22))
+    #     + list(np.linspace(middle_section[0], middle_section[1], 16))
+    #     + list(np.linspace(upper_section[0], upper_section[1], 6))
     # )
-    plt.yticks(fontsize=10)  # mutation_rates)
-    plt.xticks(fontsize=10)  # betas)
-    plt.plot(betas, critical_m, "red", label="$M_0=1$")
-    plt.legend(fontsize=10)
-    plt.tight_layout()
-    plt.savefig("Mean_final_i_countourf.jpg", dpi=dpi)
-    plt.show()
+    # levels = (
+    #     list(np.linspace(lower_section[0], lower_section[1], 22))
+    #     + list(np.linspace(middle_section[0] * 1.01, middle_section[1], 16))
+    #     + list(np.linspace(upper_section[0] * 1.01, upper_section[1], 6))
+    # )
+    # norm = BoundaryNorm(boundaries, cmap.N, clip=True)
 
-    # Save results
-    df_final_i = pd.DataFrame(
-        final_i_values, index=r0s, columns=mutation_rates
-    )
-    df_final_i.to_csv("Mean_final_i.csv")
+    # # Compute critical m for which empv=1
+    # critical_m = np.zeros(len(betas))
+    # for i, beta in enumerate(betas):
+    #     r_final = final_recovered(beta / gamma, x0[0])
+    #     critical_m[i] = gamma / r_final
 
-    # Set parameters for example plot with extinction
-    t_span = (0, 2000)
-    beta = 0.15
-    mutation_rate = 0.2
+    # # Plot results as meshplot and contour plot
+    # plt.figure(figsize=(8, 6))
+    # c = plt.pcolormesh(
+    #     betas,
+    #     mutation_rates,
+    #     final_i_values.T,
+    #     shading="auto",
+    #     cmap=cmap,
+    #     norm=norm,
+    # )
+    # plt.colorbar(
+    #     c,
+    #     label="Mean Final I",
+    #     ticks=ticks,
+    #     boundaries=boundaries,
+    #     format="%.4f",
+    # )
+    # plt.ylabel("Mutation Rate")
+    # plt.xlabel("Beta")
+    # plt.title("Mean Final I for Different Betas and Mutation Rates")
+    # plt.yticks(mutation_rates)
+    # plt.xticks(betas)
+    # plt.plot(betas, critical_m, "red")
+    # plt.tight_layout()
+    # plt.savefig("Mean_final_i_meshplot.jpg", dpi=dpi)
+    # plt.show()
 
-    # Solve example system
-    sir_mutation_stats = solve_shsvd(
-        sir_model,
-        mutation_probability_added,
-        transition_function,
-        x0,
-        t_span,
-        mutation_rate * 0.1,  # Speeds up the computation
-        norm_order=[],
-        collect_dimension=False,
-        collect_jump_times=True,
-        check_jump_rate=True,
-        flow_args=(beta, gamma),
-        jump_rate_args=(mutation_rate,),
-        iterations=500,
-        custom_evaluation_functions=[
-            total_infectious,
-            # infectious_with_first_variant,
-        ],
-        # jump_set_function=extinction_function,
-        # jump_set_transition_function=extinction_transition,
-    )
+    # betas = betas * 10
 
-    # Plot example system
-    fig = sir_mutation_stats.plot_cefs()
-    plt.figure(fig)
-    plt.grid()
-    plt.title("Plot of overall infectious fraction")
-    plt.ylabel("Overall infectious fraction")
-    plt.savefig("Example.jpg", dpi=dpi)
-    plt.show()
+    # plt.figure()
+    # c = plt.contourf(
+    #     betas,
+    #     mutation_rates,
+    #     final_i_values.T,
+    #     levels=levels,
+    #     cmap=cmap,
+    #     norm=norm,
+    # )
+    # cb = plt.colorbar(
+    #     c,
+    #     label=r"Mean $I_{ges}(1000)$",
+    #     ticks=ticks,
+    #     boundaries=boundaries,
+    #     format="%.4f",
+    # )
+    # cb.set_label(label=r"Mean $I_{ges}(1000)$", fontsize=12)
+    # cb.ax.tick_params(labelsize=10)
+    # plt.ylabel(r"Mutation rate $m$", fontsize=12)
+    # plt.xlabel(r"Basic reproduction number $R_0$", fontsize=12)
+    # # plt.title(
+    # #     r"Mean $I_{ges}(1000)$ for different $R_0$ and mutation rates $m$"
+    # # )
+    # plt.yticks(fontsize=10)  # mutation_rates)
+    # plt.xticks(fontsize=10)  # betas)
+    # plt.plot(betas, critical_m, "red", label="$M_0=1$")
+    # plt.legend(fontsize=10)
+    # plt.tight_layout()
+    # plt.savefig("Mean_final_i_countourf.jpg", dpi=dpi)
+    # plt.show()
 
-    sir_mutation_stats.plot_jump_times(
-        [1, 2], density=True, separate_plots=True
-    )
-    sir_mutation_stats.plot_number_of_jumps()
-    """
+    # # Save results
+    # df_final_i = pd.DataFrame(
+    #     final_i_values, index=r0s, columns=mutation_rates
+    # )
+    # df_final_i.to_csv("Mean_final_i.csv")
+
+    # # Set parameters for example plot with extinction
+    # t_span = (0, 2000)
+    # beta = 0.15
+    # mutation_rate = 0.2
+
+    # # Solve example system
+    # sir_mutation_stats = solve_shsvd(
+    #     sir_model,
+    #     mutation_probability_added,
+    #     transition_function,
+    #     x0,
+    #     t_span,
+    #     mutation_rate * 0.1,  # Speeds up the computation
+    #     norm_order=[],
+    #     collect_dimension=False,
+    #     collect_jump_times=True,
+    #     check_jump_rate=True,
+    #     flow_args=(beta, gamma),
+    #     jump_rate_args=(mutation_rate,),
+    #     iterations=500,
+    #     custom_evaluation_functions=[
+    #         total_infectious,
+    #         # infectious_with_first_variant,
+    #     ],
+    #     # jump_set_function=extinction_function,
+    #     # jump_set_transition_function=extinction_transition,
+    # )
+
+    # # Plot example system
+    # fig = sir_mutation_stats.plot_cefs()
+    # plt.figure(fig)
+    # plt.grid()
+    # plt.title("Plot of overall infectious fraction")
+    # plt.ylabel("Overall infectious fraction")
+    # plt.savefig("Example.jpg", dpi=dpi)
+    # plt.show()
+
+    # sir_mutation_stats.plot_jump_times(
+    #     [1, 2], density=True, separate_plots=True
+    # )
+    # sir_mutation_stats.plot_number_of_jumps()
+
     # Set parameters for example plot with seasonality and extinction
-    t_span = (0, 500)
-    beta = 0.15
+    x0 = [0.999, 0.001, 0]
+    t_span = (0, 300)
+    beta = 0.1
     mutation_rate = 0.2
+    gamma = 0.1
+    dpi = 500
 
     # Solve example system
     sir_mutation_stats = solve_shsvd(
@@ -610,4 +613,72 @@ if __name__ == "__main__":
         [1, 2], density=True, separate_plots=True
     )
     sir_mutation_stats.plot_number_of_jumps()
-    """
+
+    t = sir_mutation_stats.times
+    infectious_1 = sir_mutation_stats.cef_means[0]
+    infectious_1_variance = sir_mutation_stats.cef_variances[0]
+
+    v = 0.17
+    x0 = [0.999 - v, 0.001, v]
+    sir_mutation_stats = solve_shsvd(
+        sir_model_with_seasonality,
+        mutation_probability,
+        transition_function,
+        x0,
+        t_span,
+        mutation_rate,
+        norm_order=[1, 2],
+        collect_jump_times=True,
+        flow_args=(beta_seasonal, gamma),
+        jump_rate_args=(mutation_rate,),
+        iterations=50,
+        custom_evaluation_functions=[
+            total_infectious,
+            infectious_with_first_variant,
+        ],
+        jump_set_function=extinction_function,
+        jump_set_transition_function=extinction_transition,
+    )
+
+    # Plot example system
+    fig = sir_mutation_stats.plot_cefs()
+    plt.figure(fig)
+    plt.grid()
+    plt.title("Plot of overall infectious fraction")
+    plt.xlabel("Overall infectious fraction")
+    plt.savefig("Example_with_seasonality.jpg", dpi=dpi)
+    plt.show()
+
+    sir_mutation_stats.plot_jump_times(
+        [1, 2], density=True, separate_plots=True
+    )
+    sir_mutation_stats.plot_number_of_jumps()
+
+    t = sir_mutation_stats.times
+    infectious_2 = sir_mutation_stats.cef_means[0]
+    infectious_2_variance = sir_mutation_stats.cef_variances[0]
+
+    times = np.array(t) * 3.65
+    sigma = 2
+    plt.figure()
+    plt.plot(times, infectious_1, label="Without vaccination")
+    plt.fill_between(
+        times,
+        infectious_1 + sigma * infectious_1_variance,
+        infectious_1 - sigma * infectious_1_variance,
+        alpha=0.3,
+    )
+    plt.plot(times, infectious_2, label="With vaccination")
+    plt.fill_between(
+        times,
+        infectious_2 + sigma * infectious_2_variance,
+        infectious_2 - sigma * infectious_2_variance,
+        alpha=0.3,
+    )
+    plt.xlabel("Time [days]")
+    plt.ylabel("Infectious fraction")
+    plt.grid()  #
+    plt.legend(loc="upper left")
+    plt.tight_layout()
+    plt.savefig("Example_vaccination.jpg", dpi=dpi)
+    plt.show()

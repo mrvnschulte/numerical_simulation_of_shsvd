@@ -10,6 +10,8 @@ Beweisstrategie:
 
 """
 
+import matplotlib.pyplot as plt
+import numpy as np
 from sympy import (
     symbols,
     simplify,
@@ -46,6 +48,15 @@ beta_2 = symbols("beta_2", real=True, positive=True)
 gamma_1 = symbols("gamma_1", real=True, positive=True)
 gamma_2 = symbols("gamma_2", real=True, positive=True)
 b = symbols("b", real=True, positive=True)
+
+params_dict = {
+    sigma: Rational(8, 10),
+    beta_2: Rational(35, 100),
+    beta_1: Rational(3, 10),
+    gamma_1: Rational(1, 10),
+    gamma_2: Rational(1, 10),
+    b: Rational(1, 100),
+}
 
 print("\n" + "-" * 80)
 print("STEP 1: Symbolic construction")
@@ -407,3 +418,112 @@ print(f"\nS(0)={Si10}")
 
 roots_Si10 = roots(Si10, sigma)
 print(f"With sigma roots: {roots_Si10}")
+
+
+i2_i1_val = i2_i1.subs(params_dict)
+i1d_val = i1d.subs(params_dict)
+i1c_val = i1c.subs(params_dict)
+i1_val = np.linspace(i1d_val + 0.1 * i1d_val, i1c_val + 0.5 * i1c_val, 1001)
+i2_val = [i2_i1_val.subs(i1, i1_v) for i1_v in i1_val]
+
+plt.plot(i1_val, i2_val)
+plt.grid()
+plt.ylim(-0.1, 0.5)
+plt.xticks(
+    np.asarray([i1d_val, 0, i1c_val], dtype=float),
+    labels=[r"$i_1^d$", "0", r"$i_1^c$"],
+)
+plt.yticks([0], [0])
+plt.xlabel(r"$i_1$")
+plt.ylabel(r"$i_2(i_1)$")
+plt.tight_layout()
+plt.savefig("Plots/i2_i1.jpg", dpi=500)
+plt.show()
+
+del params_dict[sigma]
+S1c_val = Si1c.subs(params_dict)
+sigma_val = np.linspace(-0.2, 1.2)
+
+S1c_val_sigma = [S1c_val.subs(sigma, s) for s in sigma_val]
+
+plt.plot(sigma_val, S1c_val_sigma)
+plt.grid()
+plt.ylim(-2e-8, 6e-8)
+plt.xlim(-0.1, 1.1)
+plt.xticks(
+    [0, 1],
+    labels=[0, 1],
+)
+plt.yticks([0], [0])
+plt.xlabel(r"$\sigma$")
+plt.ylabel(r"$S(i_1^c)(\sigma)$")
+plt.tight_layout()
+plt.savefig("Plots/Si1c_sigma.jpg", dpi=500)
+plt.show()
+
+S1d_val = Si1d.subs(params_dict)
+sigma_val = np.linspace(-0.2, 1.2)
+
+S1d_val_sigma = [S1d_val.subs(sigma, s) for s in sigma_val]
+
+plt.plot(sigma_val, S1d_val_sigma)
+plt.grid()
+plt.ylim(-4e-8, 2e-8)
+plt.xlim(-0.1, 1.1)
+plt.xticks(
+    [0, 1],
+    labels=[0, 1],
+)
+plt.yticks([0], [0])
+plt.xlabel(r"$\sigma$")
+plt.ylabel(r"$S(i_1^d)(\sigma)$")
+plt.tight_layout()
+plt.savefig("Plots/Si1d_sigma.jpg", dpi=500)
+plt.show()
+
+S10_val = Si10.subs(params_dict)
+sigma_val = np.linspace(-0.2, 1.2)
+
+S10_val_sigma = [S10_val.subs(sigma, s) for s in sigma_val]
+
+r_01 = beta_1 / (gamma_1 + b)
+r_02 = beta_2 / (gamma_2 + b)
+sigma_star = r_02 * (r_01 - 1) / (r_01 * (r_02 - 1))
+sigma_star_val = sigma_star.subs(params_dict)
+
+plt.plot(sigma_val, S10_val_sigma)
+plt.grid()
+plt.ylim(-8e-8, 2e-8)
+plt.xlim(-0.1, 1.1)
+plt.xticks(
+    np.asarray([0, sigma_star_val, 1], dtype=float),
+    labels=[0, r"$\sigma_{1\to2}^*$", 1],
+)
+plt.yticks([0], [0])
+plt.xlabel(r"$\sigma$")
+plt.ylabel(r"$S(0)(\sigma)$")
+plt.tight_layout()
+plt.savefig("Plots/Si10_sigma.jpg", dpi=500)
+plt.show()
+
+params_dict[sigma] = Rational(8, 10)
+
+S_val = S.subs(params_dict)
+
+i1_val = np.linspace(i1d_val + 0.2 * i1d_val, i1c_val + 0.2 * i1c_val, 1001)
+i2_val = [S_val.subs(i1, i1_v) for i1_v in i1_val]
+
+plt.plot(i1_val, i2_val)
+plt.grid()
+plt.xlim(float(i1d_val + 0.1 * i1d_val), float(i1c_val + 0.1 * i1c_val))
+# plt.ylim(-0.1, 0.5)
+plt.xticks(
+    np.asarray([i1d_val, 0, i1c_val], dtype=float),
+    labels=[r"$i_1^d$", "0", r"$i_1^c$"],
+)
+plt.yticks([0], [0])
+plt.xlabel(r"$i_1$")
+plt.ylabel(r"$S(i_1)$")
+plt.tight_layout()
+plt.savefig("Plots/S_i1.jpg", dpi=500)
+plt.show()

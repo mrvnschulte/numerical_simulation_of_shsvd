@@ -6,6 +6,8 @@ Created on Tue Jan 13 16:17:45 2026
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import matplotlib.colors as mcolors
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -32,6 +34,38 @@ def classify_r0(r0_23, r0_32):
         return -1
 
 
+def classify_three_variant_coexistence(
+    r0_12, r0_21, r0_13, r0_31, r0_23, r0_32
+):
+    coexistence_set = 7
+    if r0_12 < 1 or r0_13 < 1:
+        coexistence_set -= 0b001
+    if r0_21 < 1 or r0_23 < 1:
+        coexistence_set -= 0b010
+    if r0_31 < 1 or r0_32 < 1:
+        coexistence_set -= 0b100
+    return coexistence_set
+
+
+def bitmask_to_label(v, items=None):
+    """
+    v: ganzzahlige Bitmaske (z.B. 0..7 für drei Bits)
+    items: optionale Liste der Bezeichner pro Bit, z.B. ["1","2","3"]
+    Rückgabe: Zeichenkette wie "{1,2}" oder "{}" wenn nichts gesetzt
+    """
+    v = int(v)
+    if items is None:
+        items = [str(i + 1) for i in range(v.bit_length())]
+    bits = []
+    i = 0
+    while v:
+        if v & 1:
+            bits.append(items[i])
+        v >>= 1
+        i += 1
+    return "{" + ",".join(bits) + "}" if bits else "{}"
+
+
 t0 = 0
 tf = 1000
 beta = [0.2, 0.3]
@@ -54,7 +88,7 @@ print(sol.y.T[-1])
 
 x0 = sol.y.T[-1]
 
-beta_1 = np.linspace(0.1, 0.5, 501)
+beta_3 = np.linspace(0.1, 0.5, 501)
 sigma_23 = np.linspace(0, 1, 201)
 sigma_12 = np.linspace(0, 1, 11)
 
@@ -63,7 +97,7 @@ for s_12 in sigma_12:
     # results_mask = []
     results_flags = []
 
-    for p in beta_1:
+    for p in beta_3:
         # row_masks = []
         row_flags = []
         for s in sigma_23:
@@ -129,12 +163,14 @@ for s_12 in sigma_12:
             r0_32 = invasion_reproduction_number(
                 beta[2] / gamma[2], beta[1] / gamma[1], sigma[2, 1]
             )
-            classifier_12 = classify_r0(r0_12, r0_21)
-            classifier_13 = classify_r0(r0_13, r0_31)
-            classifier_23 = classify_r0(r0_23, r0_32)
+            # classifier_12 = classify_r0(r0_12, r0_21)
+            # classifier_13 = classify_r0(r0_13, r0_31)
+            # classifier_23 = classify_r0(r0_23, r0_32)
 
-            classifier = classifier_23 + 3 * classifier_13 + 9 * classifier_12
-
+            # classifier = classifier_23 + 3 * classifier_13 + 9 * classifier_12
+            classifier = classify_three_variant_coexistence(
+                r0_12, r0_21, r0_13, r0_31, r0_23, r0_32
+            )
             # row_masks.append(mask)
             row_flags.append(classifier)
 
@@ -177,17 +213,23 @@ for s_12 in sigma_12:
 
     # Heatmap plotten (wie zuvor, aber mit results_flags)
 
+    cmap = plt.get_cmap("viridis", 8)
+    norm = mcolors.BoundaryNorm(boundaries=np.arange(-0.5, 8.5, 1), ncolors=8)
+
     plt.figure(figsize=(6, 5))
     plt.imshow(
         results_flags,
         origin="lower",
         aspect="auto",
-        extent=[min(sigma_23), max(sigma_23), min(beta_1), max(beta_1)],
-        cmap="viridis",  # oder ein anderes Colormap
-        vmin=np.min(results_flags),
-        vmax=np.max(results_flags),
+        extent=[min(sigma_23), max(sigma_23), min(beta_3), max(beta_3)],
+        cmap=cmap,
+        norm=norm,  # oder ein anderes Colormap
     )
-    plt.colorbar(label="Kennzahl (0, 1, 2, ...)")
+    cbar = plt.colorbar(label="Kennzahl (0, 1, 2, ...)")
+    cbar.ax.yaxis.set_major_locator(ticker.FixedLocator(range(0, 8)))
+    cbar.ax.yaxis.set_major_formatter(
+        ticker.FuncFormatter(lambda v, pos: bitmask_to_label(v))
+    )
     plt.xlabel("s (sigma_23)")
     plt.ylabel("p (beta_1)")
     plt.title("Kennzahlen je (p, s)")
