@@ -485,7 +485,7 @@ def x_9(
     ) / b
 
 
-def equation(
+def endemic_equilibrium_equation(
     i,
     sigma=0.7,
     beta_1=0.3,
@@ -600,7 +600,7 @@ def check_validity(x):
     return np.all((0 <= x) & (x <= 1))
 
 
-def random_simplex_points(n, dim=9):
+def random_simplex_points(n, dim=9, rng=None):
     """
     Generate random points on the standard simplex according to Dirichlet
     distribution.
@@ -611,14 +611,18 @@ def random_simplex_points(n, dim=9):
         Number of points to generate.
     dim : int, optional
         Dimension of x. The default is 9.
+    rng : np.random.Generator, optional
+        Random number generator. If None is given, it is initialized
 
     Returns
     -------
     np.ndarray
         Array of n random points on the simplex.
     """
+    if rng is None:
+        rng = np.random.default_rng()
     alpha = np.ones(dim)
-    mats = np.random.dirichlet(alpha, size=n)
+    mats = rng.dirichlet(alpha, size=n)
     return mats
 
 
@@ -628,7 +632,7 @@ def sample_parameters(rng):
 
     Parameters
     ----------
-    rng : TYPE
+    rng : np.random.Generator
         Random number generator.
 
     Returns
@@ -653,31 +657,61 @@ def sample_parameters(rng):
 
 
 def check_parameter_sets(
-    N_target_sets, N_startpoints, threshold_r0, filename, verbose=False
+    N_target_sets,
+    N_initial_values,
+    threshold_r0,
+    filename,
+    verbose=False,
+    tf=5000,
+    seed=42,
+    dpi=500,
 ):
-    rng = np.random.default_rng(seed=42)
+    """
+    Checks stability of the two-variant equilibrium for random parameters.
 
-    tf = 5000
+    Parameters
+    ----------
+    N_target_sets : int
+        Number of parameter sets to check.
+    N_initial_values : int
+        Number of initial values per parameter set to check.
+    threshold_r0 : float
+        Threshold value of the invasion reproduction number which has to be
+        exceeded.
+    filename : str
+        Filename to store plots.
+    verbose : bool, optional
+        Verbose mode. The default is False.
+    tf : float, optional
+        Time until which to simulate. The default is 5000.
+    seed : int, optional
+        Seed of random number generator. The default is 42.
+    dpi : int, optional
+        Dots per inch for saving plots. The default is 500.
 
+    Returns
+    -------
+    None.
+    """
+    # Initialize variables
+    rng = np.random.default_rng(seed=seed)
     valid_stats = []
-
-    # Symbolic variables
 
     x1, x2, x3, x4, x5, x6, x7, x8, x9 = sp.symbols(
         "x1 x2 x3 x4 x5 x6 x7 x8 x9"
     )
+    xs = [x1, x2, x3, x4, x5, x6, x7, x8, x9]
     gamma1, gamma2, beta1, beta2, sigma, b = sp.symbols(
         "gamma1 gamma2 beta1 beta2 sigma b", positive=True
     )
 
-    xs = [x1, x2, x3, x4, x5, x6, x7, x8, x9]
-
+    # Linearize the model symbolically
     F = two_variant_model(0, xs, beta1, beta2, gamma1, gamma2, sigma, b)
-
     J = sp.Matrix(F).jacobian(xs)
 
     cycles = 0
     while len(valid_stats) < N_target_sets:
+        # Sample random parameters for the model
         rng = np.random.default_rng(seed=cycles)
         cycles += 1
         params = sample_parameters(rng)
@@ -688,7 +722,8 @@ def check_parameter_sets(
         gamma_2 = params["gamma2"]
         b_val = params["b"]
 
-        # Reproduction numbers
+        # Compute (invasion) reproduction numbers and check if both are greater
+        # than 1
         r_01 = beta_1 / (gamma_1 + b_val)
         r_02 = beta_2 / (gamma_2 + b_val)
         r_012 = invasion_reproduction_number(
@@ -697,12 +732,13 @@ def check_parameter_sets(
         r_021 = invasion_reproduction_number(
             beta_2 / (gamma_2 + b_val), beta_1 / (gamma_1 + b_val), sigma_val
         )
-
         if not (r_012 > threshold_r0 and r_021 > threshold_r0):
             continue
 
+        # Solve the system for the endemic equilibrium and check if the
+        # two-variant equilibrium was found
         sol = root(
-            equation,
+            endemic_equilibrium_equation,
             [1, 1],
             args=(sigma_val, beta_1, beta_2, gamma_1, gamma_2, b_val),
             method="hybr",
@@ -713,6 +749,8 @@ def check_parameter_sets(
             x_bar(sol.x, sigma_val, beta_1, beta_2, gamma_1, gamma_2, b_val)
         )
 
+        # Replace the symbolic variables by its numerical values and compute
+        # the maximal real part of the eigenvalues of the linearized system
         x_star_dict = {
             x1: x_star[0],
             x2: x_star[1],
@@ -730,23 +768,18 @@ def check_parameter_sets(
             gamma2: gamma_2,
             sigma: sigma_val,
         }
-
         J_num = J.subs(x_star_dict)
         J_num = np.array(J_num.evalf().tolist(), dtype=float)
-
         eigvals = np.linalg.eigvals(J_num)
         max_real_part = np.max(eigvals.real)
-        # if max_real_part > 0:
-        #     print(rf"\nR_{{0,1\to2}}={r_012}")
-        #     print(rf"R_{{0,2\to1}}={r_021}")
-        #     print(max_real_part)
-        #     print(sol.x)
-        # valid_stats.append(max_real_part)
 
-        x0_list = rng.dirichlet(alpha=np.ones(9), size=N_startpoints)
-
+        # Create list of random initial values
+        x0_list = random_simplex_points(N_initial_values, dim=9, rng=rng)
         final_states = []
         dist_to_xstar = []
+
+        # For each initial value, solve the system until tf and compare the
+        # distance to the computed equilibrium
         for x0 in x0_list:
             sol_ode = solve_ivp(
                 two_variant_model,
@@ -760,35 +793,14 @@ def check_parameter_sets(
                 continue
             final_states.append(final_x)
             dist_to_xstar.append(np.linalg.norm(final_x - x_star))
-            if np.linalg.norm(final_x - x_star) > 1e-3:
-                plt.plot(sol_ode.t, sol_ode.y.T)
-                for xi in x_star:
-                    plt.axhline(xi, color="blue")
-                plt.show()
 
-        #     if len(valid_stats) == 2:
-        #         print(f"Final state: {final_x}")
-        #         print(
-        #             f"With derivative: {two_variant_model(0, final_x, beta_1, beta_2, gamma_1, gamma_2, sigma, b)}"
-        #         )
-        #         plt.plot(sol_ode.t, sol_ode.y.T)
-        #         for xi in x_star:
-        #             plt.axhline(xi, color="blue")
-        #         plt.show()
-
-        # if len(valid_stats) == 2:
-        #     print(f"Final state: {x_star}")
-        #     print(
-        #         f"With derivative: {two_variant_model(0, x_star, beta_1, beta_2, gamma_1, gamma_2, sigma, b)}"
-        #     )
-        #     print(f"Parameters: {params}")
-
+        # Convert to arrays
         if len(final_states) == 0:
             continue
-
         final_states = np.array(final_states)
         dist_to_xstar = np.array(dist_to_xstar)
 
+        # Store statistics in a dictionary
         stats = {
             "set": len(valid_stats),
             "params": params,
@@ -803,9 +815,6 @@ def check_parameter_sets(
             "r_021": r_021,
             "max_eigval": max_real_part,
         }
-        if stats["max_dist"] > 1e-3:
-            print(sol.x)
-            plt.plot()
         valid_stats.append(stats)
 
         if verbose:
@@ -815,15 +824,18 @@ def check_parameter_sets(
                 f"mean_dist={stats['mean_dist']:.4e}, max_dist={stats['max_dist']:.4e}, cycles={cycles}"
             )
 
+    # Plot maximal distance between long-term simulation and computed
+    # equilibrium
     plt.scatter(
         [s["set"] for s in valid_stats], [s["max_dist"] for s in valid_stats]
     )
     plt.xlabel("Index of parameter set")
-    plt.ylabel(r"Maximal distance $||x(5000) - \bar x||$")
+    plt.ylabel(rf"Maximal distance $||x({tf}) - \bar x||$")
     plt.tight_layout()
-    plt.savefig(filename, dpi=500)
+    plt.savefig(f"{filename}_distance.jpg", dpi=dpi)
     plt.show()
 
+    # Plot maximal real part of eigenvalues at computed equilibria
     plt.scatter(
         [s["set"] for s in valid_stats], [s["max_eigval"] for s in valid_stats]
     )
@@ -831,45 +843,53 @@ def check_parameter_sets(
     plt.xlabel("Index of parameter set")
     plt.ylabel(r"Maximal real part of eigenvalues$")
     plt.tight_layout()
-    plt.savefig(f"{filename.replace('.jpg','')}_eigval.jpg", dpi=500)
+    plt.savefig(f"{filename}_eigval.jpg", dpi=dpi)
     plt.show()
 
+    # Plot statistics of invasion reproduction numbers
     max_val = max([min(s["r_012"], s["r_021"]) for s in valid_stats])
     bins = np.arange(1.0, max_val + 0.1, 0.1)
     plt.hist([min(s["r_012"], s["r_021"]) for s in valid_stats], bins=bins)
     plt.xlabel("Lower invasion reproduction number")
     plt.ylabel("Number of parameter sets")
     plt.tight_layout()
-    plt.savefig(f"{filename.replace('.jpg','')}_stats.jpg", dpi=500)
+    plt.savefig(f"{filename}_stats.jpg", dpi=dpi)
     plt.show()
 
-    print(max([s["max_eigval"] for s in valid_stats]))
+    total_max_real_part = max([s["max_eigval"] for s in valid_stats])
+    print(f"The maximal real part of any eigenvalue is: {total_max_real_part}")
 
 
 ### STEP 1: Check for given parameters and multiple initial values
 
+# Set parameters
 sigma = 0.8
 beta_1 = 0.3
 beta_2 = 0.35
 gamma_1 = 0.1
 gamma_2 = 0.1
 b = 0.01
-
-
-np.random.seed(42)
 N_initial_values = 100000
+tf = 1000
+filename = "Plots/Distance_different_initial_values.jpg"
+seed = 42
+dpi = 500
+
+# Generate random initial values
+rng = np.random.default_rng(seed=seed)
 x0_list = random_simplex_points(N_initial_values, dim=9)
 
+# Compute two-variant endemic equilibrium
 sol = root(
-    equation,
+    endemic_equilibrium_equation,
     [1, 1],
     args=(sigma, beta_1, beta_2, gamma_1, gamma_2, b),
     method="hybr",
 )
 x_star = np.array(x_bar(sol.x, sigma, beta_1, beta_2, gamma_1, gamma_2, b))
 
-tf = 1000
-results_final = []
+# For each initial value, solve the system until tf and compare the distance to
+# the computed equilibrium
 distances = []
 for i in range(N_initial_values):
     x0 = x0_list[i]
@@ -881,32 +901,39 @@ for i in range(N_initial_values):
         vectorized=False,
     )
     final_x = sol_ode.y.T[-1]
-    results_final.append(final_x)
-
     dist = np.linalg.norm(final_x - x_star)
     distances.append(dist)
-
 distances = np.array(distances)
 
 print("Mean distance to x_star:", distances.mean())
 print("Maximal distance to x_star:", max(distances))
 
-results_final = np.array(results_final)
+# Plot distance between long-term simulation and computed equilibrium
 plt.scatter(range(N_initial_values), distances)
 plt.xlabel("Index of initial value")
 plt.ylabel(r"Distance $||x(1000) - \bar x||$")
 plt.tight_layout()
-plt.savefig("Plots/Distance_different_initial_values.jpg", dpi=500)
+plt.savefig(filename, dpi=dpi)
 plt.show()
 
 
-### STEP 2: Check for mutliple parameter sets and initial values
+### STEP 2: Check for multiple parameter sets and initial values
 
-N_target_sets = 1000
-N_startpoints = 100
+N_target_sets = 10
+N_initial_values = 1
 threshold_r0 = 1
-filename = f"Distance_different_parameters_{threshold_r0}_test.jpg"
+filename = "Plots/Different_parameters"
+tf = 5000
+dpi = 500
+seed = 42
 
 check_parameter_sets(
-    N_target_sets, N_startpoints, threshold_r0, filename, verbose=True
+    N_target_sets,
+    N_initial_values,
+    threshold_r0,
+    filename,
+    verbose=True,
+    tf=tf,
+    seed=seed,
+    dpi=dpi,
 )
