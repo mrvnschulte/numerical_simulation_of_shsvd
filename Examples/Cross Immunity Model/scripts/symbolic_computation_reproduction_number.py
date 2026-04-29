@@ -1,8 +1,11 @@
+"""
+Computes the eigenvalues and eigenvectors of the 2-variant transmission matrix,
+the ones for one block of the 3-variant model and the invasion reproduction
+number for the 2-variant model.
+"""
+
 from sympy import Matrix, symbols
 
-"""
-Computes the eigenvalues and eigenvectors of the 2-variant transmission matrix
-"""
 
 ### STEP 1: Compute the eigenvalues of the two-variant model
 sigma = symbols("sigma")

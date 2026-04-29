@@ -1,46 +1,46 @@
 """
-Rigoroser Beweis: Maximale Anzahl Lösungen im Einheitsquadrat [0,1]²
+Proof that there are at most four solutions in [0,1]².
 
-Beweisstrategie:
-1. Symbolische Konstruktion des Systems
-2. Polynomialisierung durch Multiplikation mit Hauptnenner
-3. Gröbner-Basis Berechnung (lexikographische Ordnung)
-4. Grad-Analyse des univariaten Polynoms
-5. Sturm-Sequenz zur Zählung reeller Wurzeln in [0,1]
-
+Proof strategy:
+1. Symbolic construction of the system (Steps 1-2)
+2. Polynomialisation of the system and degree analysis (Steps 3-4)
+3. Division by common divisor and degree analysis of reduced system (Step 5-7)
+4. Compute resultant of the system (Step 8)
+5. Examine roots of resultant (Step 9-12)
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 from sympy import (
-    symbols,
-    simplify,
-    together,
-    numer,
-    denom,
     degree,
-    total_degree,
-    solve,
-    roots,
-    Poly,
+    div,
+    factor,
+    gcd,
+    numer,
     Rational,
+    resultant,
+    roots,
+    simplify,
+    symbols,
+    together,
+    total_degree,
 )
 
-# ============================================================================
+from cross_immunity_model import x_bar
 
-# SCHRITT 1: SYMBOLISCHE DEFINITIONEN
 
-# ============================================================================
+dpi = 500
+folder = "../plots"
 
 print("=" * 80)
 print("Proof: Number of solutions in [0,1]²")
 print("=" * 80)
 
-# Variablen
+# Variables
 
 i1, i2 = symbols("i1 i2", real=True)
 
-# Parameter (symbolisch für generischen Beweis)
+# Symbolic parameters and values for visualization only
 
 sigma = symbols("sigma", real=True, positive=True)
 beta_1 = symbols("beta_1", real=True, positive=True)
@@ -62,72 +62,20 @@ print("\n" + "-" * 80)
 print("STEP 1: Symbolic construction")
 print("-" * 80)
 
-# ============================================================================
 
-# SCHRITT 2: KONSTRUKTION ALLER x_i FUNKTIONEN
-
-# ============================================================================
+### STEP 1: CONSTRUCTION OF ALL x_i FUNCTIONS
 
 print("\nConstruct x_i functions symbolically...")
 
-# x_6
-
-x_6 = b / (beta_1 * i1 + beta_2 * i2 + b)
-print("x_6 defined")
-
-# x_1
-
-x_1 = ((1 - sigma) * beta_1 * x_6 * i1) / (gamma_1 + beta_2 * i2 + b)
-print("x_1 defined")
-
-# x_4
-
-x_4 = ((1 - sigma) * beta_2 * x_6 * i2) / (gamma_2 + beta_1 * i1 + b)
-print("x_4 defined")
-
-# x_7
-
-x_7 = (gamma_1 * x_1) / (beta_2 * i2 + b)
-print("x_7 defined")
-
-# x_8
-
-x_8 = (gamma_2 * x_4) / (beta_1 * i1 + b)
-print("x_8 defined")
-
-# x_3
-
-x_3 = (beta_1 * x_4 * i1 + beta_2 * x_1 * i2) / (gamma_1 + gamma_2 + b)
-print("x_3 defined")
-
-# x_2
-
-x_2 = (sigma * beta_1 * x_6 * i1 + beta_1 * x_8 * i1 + gamma_2 * x_3) / (
-    gamma_1 + b
+x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9 = x_bar(
+    [i1, i2], beta_1, beta_2, gamma_1, gamma_2, sigma, b
 )
-print("x_2 defined")
-
-# x_5
-
-x_5 = (sigma * beta_2 * x_6 * i2 + beta_2 * x_7 * i2 + gamma_1 * x_3) / (
-    gamma_2 + b
-)
-print("x_5 defined")
-
-# x_9
-
-x_9 = (gamma_1 * x_2 + gamma_2 * x_5) / b
-print("x_9 defined")
 
 sum_x = simplify(x_1 + x_2 + x_3 + x_4 + x_5 + x_6 + x_7 + x_8 + x_9)
 print(f"The sum of all x is: {sum_x}")
 
 
-# ============================================================================
-
-# SCHRITT 3: KONSTRUKTION DES GLEICHUNGSSYSTEMS
-
-# ============================================================================
+### STEP 2: CONSTRUCTION OF THE SYSTEM OF EQUATIONS
 
 print("\n" + "-" * 80)
 print("STEP 2: Construction of the system of equations")
@@ -139,11 +87,8 @@ F2 = x_3 + x_4 + x_5 - i2
 print("\nF1 = x_1 + x_2 + x_3 - i1")
 print("F2 = x_3 + x_4 + x_5 - i2")
 
-# ============================================================================
 
-# SCHRITT 4: POLYNOMIALISIERUNG
-
-# ============================================================================
+### STEP 3: POLYNOMIALISATION
 
 print("\n" + "-" * 80)
 print("STEP 3: Polynomialisation")
@@ -151,28 +96,20 @@ print("-" * 80)
 
 print("\nBring F1 and F2 down to a common denominator...")
 
-# Together kombiniert zu einem Bruch
-
 F1_together = together(F1)
 F2_together = together(F2)
 
 print("F1 and F2 summarized")
 
-# Extrahiere Zähler (Polynome)
-
 P1 = numer(F1_together)
 P2 = numer(F2_together)
 
 print("Nominators extracted")
-print(f"Polynomial P1 is: {P1}")
-print(f"Polynomial P2 is: {P2}")
+print(f"Polynomial P1 is: P1(i1, i2) = {P1}")
+print(f"Polynomial P2 is: P2(i1, i2) = {P2}")
 
 
-# ============================================================================
-
-# SCHRITT 5: GRAD-ANALYSE
-
-# ============================================================================
+### STEP 4: DEGREE ANALYSIS
 
 print("\n" + "-" * 80)
 print("STEP 4: Degree analysis of the polynomials")
@@ -196,34 +133,24 @@ print(f"  Degree in i1: {deg_P2_i1}")
 print(f"  Degree in i2: {deg_P2_i2}")
 print(f"  Total degree: {deg_P2}")
 
-# Naïve Bézout Schranke
-
-bezout_bound = deg_P1 * deg_P2  # oder andere Kombinationen
+bezout_bound = deg_P1 * deg_P2
 print(f"\nNaïve Bézout bound: {deg_P1} × {deg_P2} = {bezout_bound}")
 
 
-from sympy import div, degree, resultant, factor, solve, nroots, gcd
-from sympy import Poly, Rational, symbols, simplify
-
+### STEP 5: COMMON DIVISOR
 
 print("\n" + "-" * 80)
 print("STEP 5: Common divisor of P1 and P2")
 print("-" * 80)
-
-# G ist bereits bekannt
 
 G = gcd(P1, P2)
 
 print("\nCommon divisor of P1 and P2:")
 print(f"G(i1, i2) = {G}")
 
-# Faktorisiere G
-
 G_factored = factor(G)
 print(f"\nG factorised: {G_factored}")
 
-
-# Nullstellen von G
 print("\nRoots of G:")
 for a in roots(G, i1):
     print(f"  i1 = {a}  (outside [0,1])")
@@ -233,11 +160,8 @@ for a in roots(G, i2):
 print("\n✓ G = 0 has NO solutions in [0,1]²!")
 print("  → The common divisor has no solutions in the unit square")
 
-# ============================================================================
 
-# SCHRITT 2: Division mit rationalen Koeffizienten
-
-# ============================================================================
+### STEP 6: DIVISION BY COMMON DIVISOR
 
 print("\n" + "-" * 80)
 print("STEP 6: Division P1/G and P2/G")
@@ -247,30 +171,22 @@ print("\nCompute Q1 = P1 / G...")
 
 Q1, remainder1 = div(P1, G, i1, i2)
 print("Q1 computed")
-print(f"Q1: {Q1}")
+print(f"Q1(i1, i2) = {Q1}")
 print(f"Remainder: {remainder1}")
-
 
 print("\nCompute Q2 = P2 / G...")
 
 Q2, remainder2 = div(P2, G, i1, i2)
 print("Q2 computed")
-print(f"Q2: {Q2}")
+print(f"Q2(i1, i2) = {Q2}")
 print(f"Remainder: {remainder2}")
 
-# ============================================================================
 
-# SCHRITT 3: Grade der reduzierten Polynome
-
-# ============================================================================
+### STEP 7: DEGREE ANALYSIS OF REDUCED POLYNOMIALS
 
 print("\n" + "-" * 80)
 print("STEP 7: Degrees of the reduced polynomials Q1, Q2")
 print("-" * 80)
-
-# Expandiere Q1, Q2 zu Polynomen
-
-from sympy import expand, Poly, im
 
 deg_Q1_i1 = degree(Q1, i1)
 deg_Q1_i2 = degree(Q1, i2)
@@ -289,15 +205,11 @@ print(f"  Degree in i1: {deg_Q2_i1}")
 print(f"  Degree in i2: {deg_Q2_i2}")
 print(f"  Total degree: {deg_Q2}")
 
-bezout_bound = deg_Q1 * deg_Q2  # oder andere Kombinationen
+bezout_bound = deg_Q1 * deg_Q2
 print(f"\nNaïve Bézout bound: {deg_Q1} × {deg_Q2} = {bezout_bound}")
 
 
-# ============================================================================
-
-# SCHRITT 5: Resultante des reduzierten Systems
-
-# ============================================================================
+### STEP 8: RESULTANT OF THE REDUCED SYSTEM
 
 print("\n" + "-" * 80)
 print("STEP 8: Resultant of the reduced system")
@@ -306,10 +218,7 @@ print("-" * 80)
 print("\nCompute resultant R_Q = Res(Q1, Q2, i2)...")
 
 R_Q = resultant(Q1, Q2, i2)
-
-# Vereinfache
 R_Q = simplify(R_Q)
-
 deg_R_Q = degree(R_Q, i1)
 
 print(f"\nDegree of the resultant in i1: {deg_R_Q}")
@@ -320,10 +229,16 @@ else:
     print("\n✓ Resultant is non-trivial")
     print(f"  Maximal number of roots in i1: {deg_R_Q}")
 
-    # Faktorisiere Resultante
     print("\nFactorise resultant...")
     R_Q_factored = factor(R_Q)
     print(f"R_Q factorised: {R_Q_factored}")
+
+
+### STEP 9: ROOTS OF DIVISOR
+
+print("\n" + "-" * 80)
+print("STEP 9: Roots of divisor")
+print("-" * 80)
 
 divisor = (
     -b
@@ -350,11 +265,18 @@ for a in roots_divisor:
     roots_Q1 = roots(Q1_a, i2)
     roots_Q2 = roots(Q2_a, i2)
     print(f"\nFor root i1={a} we have:")
-    print(f"Q1({a}, i2): {simplify(Q1_a)}")
+    print(f"\nQ1({a}, i2): {simplify(Q1_a)}")
     print(f"Q2({a}, i2): {simplify(Q2_a)}")
     print(f"\nQ1({a}, i2) has roots: {roots_Q1}")
     print(f"Q2({a}, i2) has roots: {roots_Q2}")
+    print("-" * 80)
 
+
+### STEP 10: I2 ROOTS OF Q1
+
+print("\n" + "-" * 80)
+print("STEP 10: Roots of Q1 wrt i2")
+print("-" * 80)
 
 i2_i1 = roots(Q1, i2)
 print(f"\nIn general, we find the roots of Q1 wrt i2: {i2_i1}")
@@ -380,15 +302,27 @@ i2_i1 = (
         )
     )
 )
-
 i2_i1 = simplify(i2_i1)
 print(f"\nThis implies i2(i1): {i2_i1}")
 
+
+### STEP 11: EXTRACT REMAINING CUBIC FROM RESULTANT
+
+print("\n" + "-" * 80)
+print("STEP 11: Extract remaining cubic from resultant")
+print("-" * 80)
 
 S, remainder = div(R_Q, divisor)
 S = simplify(S)
 print(f"\nS=R_Q/g: {S}")
 print(f"with remainder: {remainder}")
+
+
+### STEP 12: EVALUATE CUBIC AT CRITICAL VALUES OF I2
+
+print("\n" + "-" * 80)
+print("STEP 12: Evaluate cubic at critical values of i2")
+print("-" * 80)
 
 i1c = (-(b**2) + b * beta_1 - b * gamma_1) / (b * beta_1 + beta_1 * gamma_1)
 print(f"\nCritical value i1c of i1: {i1c}")
@@ -420,6 +354,9 @@ roots_Si10 = roots(Si10, sigma)
 print(f"With sigma roots: {roots_Si10}")
 
 
+### STEP 13: VISUALIZE IMPORTANT RELATIONS
+
+# i2 dependence on i1 and important values
 i2_i1_val = i2_i1.subs(params_dict)
 i1d_val = i1d.subs(params_dict)
 i1c_val = i1c.subs(params_dict)
@@ -437,13 +374,14 @@ plt.yticks([0], [0])
 plt.xlabel(r"$i_1$")
 plt.ylabel(r"$i_2(i_1)$")
 plt.tight_layout()
-plt.savefig("Plots/i2_i1.jpg", dpi=500)
+plt.savefig(f"{folder}/i2_i1.jpg", dpi=dpi)
 plt.show()
 
+# S(i1c) dependence on sigma and important values
+fixed_sigma = params_dict[sigma]
 del params_dict[sigma]
 S1c_val = Si1c.subs(params_dict)
 sigma_val = np.linspace(-0.2, 1.2)
-
 S1c_val_sigma = [S1c_val.subs(sigma, s) for s in sigma_val]
 
 plt.plot(sigma_val, S1c_val_sigma)
@@ -458,12 +396,12 @@ plt.yticks([0], [0])
 plt.xlabel(r"$\sigma$")
 plt.ylabel(r"$S(i_1^c)(\sigma)$")
 plt.tight_layout()
-plt.savefig("Plots/Si1c_sigma.jpg", dpi=500)
+plt.savefig(f"{folder}/Si1c_sigma.jpg", dpi=dpi)
 plt.show()
 
+# S(i1d) dependence on sigma and important values
 S1d_val = Si1d.subs(params_dict)
 sigma_val = np.linspace(-0.2, 1.2)
-
 S1d_val_sigma = [S1d_val.subs(sigma, s) for s in sigma_val]
 
 plt.plot(sigma_val, S1d_val_sigma)
@@ -478,14 +416,13 @@ plt.yticks([0], [0])
 plt.xlabel(r"$\sigma$")
 plt.ylabel(r"$S(i_1^d)(\sigma)$")
 plt.tight_layout()
-plt.savefig("Plots/Si1d_sigma.jpg", dpi=500)
+plt.savefig(f"{folder}/Si1d_sigma.jpg", dpi=dpi)
 plt.show()
 
+# S(0) dependence on sigma and important values
 S10_val = Si10.subs(params_dict)
 sigma_val = np.linspace(-0.2, 1.2)
-
 S10_val_sigma = [S10_val.subs(sigma, s) for s in sigma_val]
-
 r_01 = beta_1 / (gamma_1 + b)
 r_02 = beta_2 / (gamma_2 + b)
 sigma_star = r_02 * (r_01 - 1) / (r_01 * (r_02 - 1))
@@ -503,20 +440,18 @@ plt.yticks([0], [0])
 plt.xlabel(r"$\sigma$")
 plt.ylabel(r"$S(0)(\sigma)$")
 plt.tight_layout()
-plt.savefig("Plots/Si10_sigma.jpg", dpi=500)
+plt.savefig(f"{folder}/Si10_sigma.jpg", dpi=dpi)
 plt.show()
 
-params_dict[sigma] = Rational(8, 10)
-
+# S dependence on i1 and important values
+params_dict[sigma] = fixed_sigma
 S_val = S.subs(params_dict)
-
 i1_val = np.linspace(i1d_val + 0.2 * i1d_val, i1c_val + 0.2 * i1c_val, 1001)
 i2_val = [S_val.subs(i1, i1_v) for i1_v in i1_val]
 
 plt.plot(i1_val, i2_val)
 plt.grid()
 plt.xlim(float(i1d_val + 0.1 * i1d_val), float(i1c_val + 0.1 * i1c_val))
-# plt.ylim(-0.1, 0.5)
 plt.xticks(
     np.asarray([i1d_val, 0, i1c_val], dtype=float),
     labels=[r"$i_1^d$", "0", r"$i_1^c$"],
@@ -525,5 +460,5 @@ plt.yticks([0], [0])
 plt.xlabel(r"$i_1$")
 plt.ylabel(r"$S(i_1)$")
 plt.tight_layout()
-plt.savefig("Plots/S_i1.jpg", dpi=500)
+plt.savefig(f"{folder}/S_i1.jpg", dpi=dpi)
 plt.show()
