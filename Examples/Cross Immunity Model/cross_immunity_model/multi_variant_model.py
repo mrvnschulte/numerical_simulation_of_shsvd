@@ -209,6 +209,7 @@ def multi_variant_model_with_matrices(
     T: np.ndarray,
     S: np.ndarray,
     b: float = 0.0,
+    compute_dn_variant: bool = False,
     compute_dn: bool = False,
 ) -> np.ndarray:
     """
@@ -239,6 +240,9 @@ def multi_variant_model_with_matrices(
         Shift matrix.
     b : float, optional
         Natural death and birth rate. The default is 0.0.
+    compute_dn_variant : bool, optional
+        If True, the total number of infections per variant is computed. The
+        default is False.
     compute_dn : bool, optional
         If True, the total number of infections is computed. The default is
         False.
@@ -250,6 +254,8 @@ def multi_variant_model_with_matrices(
     """
     if compute_dn:
         I = map_x_to_I(x[:-1])
+    elif compute_dn_variant:
+        I = map_x_to_I(x[: -len(beta)])
     else:
         I = map_x_to_I(x)
 
@@ -276,11 +282,14 @@ def multi_variant_model_with_matrices(
     dx = map_I_to_x(dI)
 
     # Compute derivative of total number of infections
+    if compute_dn_variant:
+        S_variant = susceptibles_per_variant(I, V, matrix_form=True)
+        dn = beta * S_variant * I_variant
+        dx = np.concatenate([dx, dn])
+
     if compute_dn:
         S_variant = susceptibles_per_variant(I, V, matrix_form=True)
         dn = np.sum(beta * S_variant * I_variant)
-        dx = list(dx)
-        dx.append(dn)
-        dx = np.array(dx)
+        dx = np.concatenate([dx, dn])
 
     return dx

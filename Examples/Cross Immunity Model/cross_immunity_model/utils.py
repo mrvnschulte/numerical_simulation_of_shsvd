@@ -7,10 +7,12 @@ model, including:
     - is_subset
     - number_of_variants
     - random_simplex_points
+    - subsets_of
     - variant_in_set
 """
 
 from collections.abc import Iterator
+from itertools import combinations
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -165,6 +167,29 @@ def random_simplex_points(
     alpha = np.ones(dim)
     mats = rng.dirichlet(alpha, size=n)
     return mats
+
+
+def subsets_of(indices: ArrayLike) -> list:
+    """
+    Returns the list of subsets of indices, excluding the empty and the full
+    set.
+
+    Parameters
+    ----------
+    indices : array-like
+        Iterable of indices to find subsets of.
+
+    Returns
+    -------
+    subsets : list
+        List of subsets of indices, excluding the empty and the full set.
+    """
+    subsets = [
+        list(map(int, comb))
+        for r in range(1, len(indices) + 1)
+        for comb in combinations(indices, r)
+    ]
+    return subsets
 
 
 def variant_in_set(k: int, i: int) -> bool:

@@ -1,3 +1,13 @@
+from .case_transformations import (
+    cases_to_incidence,
+    cumulative_cases_to_incidence,
+    cumulative_to_daily_cases,
+    moving_average,
+    relative_to_absolute_cases,
+)
+from .create_initial_conditions import (
+    create_initial_conditions_from_seroprevalence,
+)
 from .invasion_reproduction_number import (
     critical_r01,
     critical_r02,
@@ -21,6 +31,7 @@ from .model_transformations import (
 from .multi_variant_equilibrium_equations import (
     eigenvalues_linearized_system,
     find_multi_variant_equilibrium,
+    find_stable_multi_variant_equilibrium,
     multi_variant_equilibrium_compartments,
     multi_variant_equilibrium_equation,
     solve_multi_variant_equilibrium_equation,
@@ -54,22 +65,28 @@ from .utils import (
 __all__ = [
     "basic_reproduction_number",
     "build_symbolic_system",
+    "cases_to_incidence",
     "check_validity",
     "compute_gamma_matrix",
     "construct_matrices",
     "construct_transition_matrix",
+    "create_initial_conditions_from_seroprevalence",
     "critical_r01",
     "critical_r02",
     "critical_sigma",
+    "cumulative_cases_to_incidence",
+    "cumulative_to_daily_cases",
     "eigenvalues_linearized_system",
     "endemic_equilibrium_equation",
     "find_multi_variant_equilibrium",
+    "find_stable_multi_variant_equilibrium",
     "infectious_per_variant",
     "invasion_reproduction_number",
     "invasion_reproduction_number_multiple_variants",
     "is_subset",
     "map_I_to_x",
     "map_x_to_I",
+    "moving_average",
     "multi_variant_equilibrium_compartments",
     "multi_variant_equilibrium_equation",
     "multi_variant_model",
@@ -80,6 +97,7 @@ __all__ = [
     "protected_12",
     "protected_2",
     "random_simplex_points",
+    "relative_to_absolute_cases",
     "shift_matrix",
     "solve_multi_variant_equilibrium_equation",
     "susceptibles",

@@ -1,8 +1,10 @@
-import numpy as np
 import bisect
+from collections import Counter
+
+import numpy as np
+from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 import scipy.linalg as la
-from collections import Counter
 
 
 class FunctionOfVariableDimension:
@@ -14,27 +16,37 @@ class FunctionOfVariableDimension:
 
     Attributes
     ----------
-        times : list
-            A list of time points of the function.
-        values : list
-            A list of corresponding values at the given time points.
+    times : list
+        A list of time points of the function.
+    values : list
+        A list of corresponding values at the given time points.
     """
 
-    def __init__(self, times=None, values=None, checks=True):
+    def __init__(
+        self,
+        times: float | ArrayLike | None = None,
+        values: float | ArrayLike | None = None,
+        checks: bool = True,
+    ) -> None:
         """
         Initializes the function with given times and values.
 
         Parameters
         ----------
-            times : float, list or array-like, optional
-                A sequence of time points.
-            values : float, list or array-like, optional
-                A sequence of values corresponding to the times.
+        times : float or array-like, optional
+            A sequence of time points. The default is None.
+        values : float or array-like, optional
+            A sequence of values corresponding to the times. The default is
+            None.
+        checks : bool, optional
+            If True, sanity checks of the input are performed. This increases
+            computation time significantly, hence if sanity of input can be
+            assured, it should be set to False. The default is True.
 
         Raises
         ------
-            ValueError
-                If times and values are not the same length or not array-like.
+        ValueError
+            If times and values are not the same length or not array-like.
         """
         if times is None and values is None:
             self.times = []
@@ -78,70 +90,59 @@ class FunctionOfVariableDimension:
                 self._check_multiple_jumps()
                 self._check_dimension()
 
-    def __call__(self, t):
+    def __call__(self, t: float | ArrayLike) -> float | list:
         """
         Returns the interpolated value(s) of the function at the given time(s).
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the function.
+        t : float or array-like
+            The time point(s) at which to evaluate the function.
 
         Returns
         -------
-            value : float or list
-                The interpolated value(s) at the given time(s).
+        value : float or list
+            The interpolated value(s) at the given time(s).
         """
         if isinstance(t, (list, np.ndarray)):
-            value = []
-            for time in t:
-                value.append(self._interpolate_value(time))
+            value = [self._interpolate_value(time) for time in t]
         else:
             value = self._interpolate_value(t)
 
         return value
 
     @staticmethod
-    def _convert_to_list(number):
+    def _convert_to_list(number: float | np.ndarray) -> list:
         """
-        Converts a number or array-like object to a list.
+        Converts a number or np.ndarray to a list.
 
         Parameters
         ----------
-            number : int, float, or np.ndarray
-                The input to be converted.
+        number : float, or np.ndarray
+            The input to be converted.
 
         Returns
         -------
-            number : list
-                Converted list.
+        number : list
+            Converted list.
         """
-        if isinstance(
-            number,
-            (
-                int,
-                float,
-                np.float16,
-                np.float32,
-                np.float64,
-                np.int16,
-                np.int32,
-                np.int64,
-            ),
-        ):
+        if np.isscalar(number):
             number = [number]
         elif isinstance(number, np.ndarray):
             number = list(number)
 
         return number
 
-    def _sort(self):
+    def _sort(self) -> None:
         """
-        Sorts the times and corresponding values in ascending order of time.
+        Sorts times and values in ascending order.
 
-        Sorts the times and corresponding values in ascending order of time.
-        If there are times which occur twice, then the method preserves the
-        original order. This is important for jumps of the function.
+        Duplicate time points preserve their original relative order,
+        which is required to correctly represent jump discontinuities.
+
+        Notes
+        -----
+        Modifies ``self.times`` and ``self.values`` in-place.
         """
         sorted_pairs = sorted(
             zip(self.times, self.values, range(len(self.times))),
@@ -152,7 +153,9 @@ class FunctionOfVariableDimension:
         self.times = times
         self.values = values
 
-    def _delete_double_values(self, times, values, initialisation=False):
+    def _delete_double_values(
+        self, times: list, values: list, initialisation: bool = False
+    ) -> tuple[list, list]:
         """
         Removes duplicate time-value pairs from the lists.
 
@@ -162,19 +165,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            times : list
-                The list of times.
-            values : list
-                The list of values.
-            initialisation : bool, optional
-                Indicates if this is during initialization (default is False).
+        times : list
+            The list of times.
+        values : list
+            The list of values.
+        initialisation : bool, optional
+            Indicates if this is during initialization (default is False).
 
         Returns
         -------
-            times : list
-                The list of times without duplicate time-value pairs.
-            values : list
-                The list of values without duplicate time-value pairs.
+        times : list
+            The list of times without duplicate time-value pairs.
+        values : list
+            The list of values without duplicate time-value pairs.
         """
         indices_to_remove = []
 
@@ -209,15 +212,14 @@ class FunctionOfVariableDimension:
 
         return times, values
 
-    def _check_multiple_jumps(self):
+    def _check_multiple_jumps(self) -> None:
         """
         Raises an error if multiple jumps occur at the same time.
 
         Raises
         ------
-            ValueError
-                If more than one jump occurs at the same time.
-
+        ValueError
+            If more than one jump occurs at the same time.
         """
         unique_times, indices, counts = np.unique(
             self.times, return_counts=True, return_index=True
@@ -230,7 +232,7 @@ class FunctionOfVariableDimension:
                              {np.array(self.times)[jump_indices]}"
             )
 
-    def _check_dimension(self):
+    def _check_dimension(self) -> None:
         """
         Checks if the function changes dimension unexpectedly.
 
@@ -240,8 +242,8 @@ class FunctionOfVariableDimension:
 
         Raises
         ------
-            ValueError
-                If the function changes dimension unexpectedly.
+        ValueError
+            If the function changes dimension unexpectedly.
         """
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_values = self.dimension()
@@ -260,24 +262,24 @@ class FunctionOfVariableDimension:
                                      {self.times[j]} without specified jump"
                     )
 
-    def _interpolate_value(self, t):
+    def _interpolate_value(self, t: float) -> float:
         """
         Interpolates the value of the function at a given time.
 
         Parameters
         ----------
-            t : float
-                The time at which to interpolate the value.
+        t : float
+            The time at which to interpolate the value.
 
         Returns
         -------
-            value : float
-                The interpolated value.
+        value : float
+            The interpolated value.
 
         Raises
         ------
-            ValueError
-                If the time is outside the range of defined times.
+        ValueError
+            If the time is outside the range of defined times.
         """
         if t < self.times[0] or t > self.times[-1]:
             raise ValueError(
@@ -299,33 +301,26 @@ class FunctionOfVariableDimension:
 
         return value
 
-    def add_values(self, times, values, checks=True):
+    def add_values(
+        self,
+        times: float | ArrayLike,
+        values: float | ArrayLike,
+        checks: bool = True,
+    ):
         """
         Adds new time-value pairs to the function.
 
         Parameters
         ----------
-            times : float, list or array-like
-                The new time(s) to add.
-            values : float, list or array-like
-                The new value(s) corresponding to the times.
-            checks : bool, optional
-                If True, sanity checks are performed.
+        times : float or array-like
+            The new time(s) to add.
+        values : float, list or array-like
+            The new value(s) corresponding to the times.
+        checks : bool, optional
+            If True, sanity checks are performed.
         """
         # Convert everything to lists
-        if isinstance(
-            times,
-            (
-                int,
-                float,
-                np.float16,
-                np.float32,
-                np.float64,
-                np.int16,
-                np.int32,
-                np.int64,
-            ),
-        ):
+        if np.isscalar(times):
             single_value = True
         else:
             single_value = False
@@ -356,7 +351,12 @@ class FunctionOfVariableDimension:
             self._check_multiple_jumps()
             self._check_dimension()
 
-    def delete_values(self, times=None, values=None, indices=None):
+    def delete_values(
+        self,
+        times: float | list | None = None,
+        values: list | None = None,
+        indices: int | list | None = None,
+    ) -> None:
         """
         Deletes time-value pairs from the function.
 
@@ -366,21 +366,21 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            times : float or list, optional
-                The time(s) to delete.
-            values : list, optional
-                The value(s) to delete.
-            indices : int or list, optional
-                The indices of the pairs to delete.
+        times : float or list, optional
+            The time(s) to delete.
+        values : list, optional
+            The value(s) to delete.
+        indices : int or list, optional
+            The indices of the pairs to delete.
 
         Raises
         ------
-            ValueError
-                If a time to be deleted is a dimension jump time or a given
-                time-value(-index) pair is not part of the function.
-            TypeError
-                If input types do not match, i.e. one time, but multiple values
-                and/or indices are provided.
+        ValueError
+            If a time to be deleted is a dimension jump time or a given
+            time-value(-index) pair is not part of the function.
+        TypeError
+            If input types do not match, i.e. one time, but multiple values
+            and/or indices are provided.
         """
         # If nothing is provided, delete the last time-value pair
         if times is None and values is None and indices is None:
@@ -541,35 +541,37 @@ class FunctionOfVariableDimension:
         else:
             raise TypeError("Input format not correct")
 
-    def maximal_time(self):
+    def maximal_time(self) -> float:
         """
         Returns the maximum time in the function.
 
         Returns
         -------
-            float
-                The maximum time, or -inf if no times are defined.
+        float
+            The maximum time, or -inf if no times are defined.
         """
         if len(self.times) > 0:
             return self.times[-1]
         else:
             return -np.infty
 
-    def minimal_time(self):
+    def minimal_time(self) -> float:
         """
         Returns the minimum time in the function.
 
         Returns
         -------
-            float
-                The minimum time, or +inf if no times are defined.
+        float
+            The minimum time, or +inf if no times are defined.
         """
         if len(self.times) > 0:
             return self.times[0]
         else:
             return np.infty
 
-    def jump_times(self, return_index=False):
+    def jump_times(
+        self, return_index: bool = False
+    ) -> list | tuple[list, list]:
         """
         Returns the times at which jumps occur in the function.
 
@@ -601,21 +603,23 @@ class FunctionOfVariableDimension:
         else:
             return jump_times
 
-    def dimension_jump_times(self, return_index=False):
+    def dimension_jump_times(
+        self, return_index: bool = False
+    ) -> list | tuple[list, list]:
         """
         Returns the times at which dimension jumps occur.
 
         Parameters
         ----------
-            return_index : bool, optional
-                If True, also return the indices of the dimension jump times.
+        return_index : bool, optional
+            If True, also return the indices of the dimension jump times.
 
         Returns
         -------
-            dimension_jump_times : list
-                The times at which dimension jumps occur.
-            indices : list, optional
-                The indices of the dimension jump times, if requested.
+        dimension_jump_times : list
+            The times at which dimension jumps occur.
+        indices : list, optional
+            The indices of the dimension jump times, if requested.
         """
         jump_times, indices = self.jump_times(return_index=True)
         dimension_jump_indices = [
@@ -631,7 +635,9 @@ class FunctionOfVariableDimension:
         else:
             return dimension_jump_times
 
-    def non_dimension_jump_times(self, return_index=False):
+    def non_dimension_jump_times(
+        self, return_index: bool = False
+    ) -> list | tuple[list, list]:
         """
         Returns the jump times at which the dimension does not change.
 
@@ -666,50 +672,50 @@ class FunctionOfVariableDimension:
 
     def plot_coordinates(
         self,
-        title="Plot of the coordinates",
-        legend=True,
-        labels=None,
-        xlabel="Time",
-        ylabel="Value",
-        separate_plots=False,
-        sharex=True,
-        sharey=True,
-        grid=False,
-        show_jump_times=False,
-        show_dimension_jump_times=False,
-    ):
+        title: str = "Plot of the coordinates",
+        legend: bool = True,
+        labels: list | None = None,
+        xlabel: str = "Time",
+        ylabel: str = "Value",
+        separate_plots: bool = False,
+        sharex: bool = True,
+        sharey: bool = True,
+        grid: bool = False,
+        show_jump_times: bool = False,
+        show_dimension_jump_times: bool = False,
+    ) -> plt.Figure:
         """
         Plots the coordinate values of the function against time.
 
         Parameters
         ----------
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            labels : list, optional
-                Custom labels for the plot lines.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            separate_plots : bool, optional
-                If True, create separate plots for each dimension.
-            sharex : bool, optional
-                If True, share the x-axis among separate plots.
-            sharey : bool, optional
-                If True, share the y-axis among separate plots.
-            grid : bool, optional
-                If True, show grid lines on the plot.
-            show_jump_times : bool, optional
-                If True, indicate jump times on the plot.
-            show_dimension_jump_times : bool, optional
-                If True, indicate dimension jump times on the plot.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        labels : list, optional
+            Custom labels for the plot lines.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        separate_plots : bool, optional
+            If True, create separate plots for each dimension.
+        sharex : bool, optional
+            If True, share the x-axis among separate plots.
+        sharey : bool, optional
+            If True, share the y-axis among separate plots.
+        grid : bool, optional
+            If True, show grid lines on the plot.
+        show_jump_times : bool, optional
+            If True, indicate jump times on the plot.
+        show_dimension_jump_times : bool, optional
+            If True, indicate dimension jump times on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
         """
         # Create figures
         fig = plt.figure()
@@ -864,44 +870,44 @@ class FunctionOfVariableDimension:
 
     def plot_norm(
         self,
-        order=2,
-        title="Plot of the norm",
-        legend=True,
-        labels=None,
-        xlabel="Time",
-        ylabel="Value",
-        grid=False,
-        show_jump_times=False,
-        show_dimension_jump_times=False,
-    ):
+        order: int = 2,
+        title: str = "Plot of the norm",
+        legend: bool = True,
+        labels: list | None = None,
+        xlabel: str = "Time",
+        ylabel: str = "Value",
+        grid: bool = False,
+        show_jump_times: bool = False,
+        show_dimension_jump_times: bool = False,
+    ) -> plt.Figure:
         """
         Plots the norm of the function over time.
 
         Parameters
         ----------
-            order : int or list, optional
-                The order of the norm to plot. Default is the 2-norm.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            labels : list, optional
-                Custom labels for the plot lines.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
-            show_jump_times : bool, optional
-                If True, indicate jump times on the plot.
-            show_dimension_jump_times : bool, optional
-                If True, indicate dimension jump times on the plot.
+        order : int or list, optional
+            The order of the norm to plot. Default is the 2-norm.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        labels : list, optional
+            Custom labels for the plot lines.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
+        show_jump_times : bool, optional
+            If True, indicate jump times on the plot.
+        show_dimension_jump_times : bool, optional
+            If True, indicate dimension jump times on the plot.
 
         Returns
         -------
-            fig: FigureObject
-                The figure object created.
+        fig: FigureObject
+            The figure object created.
         """
         # Create figure
         fig = plt.figure()
@@ -959,7 +965,12 @@ class FunctionOfVariableDimension:
 
         return fig
 
-    def norm(self, t=None, order=None, return_times=False):
+    def norm(
+        self,
+        t: float | list | None = None,
+        order: int | None = None,
+        return_times: bool = False,
+    ) -> list | tuple[list, list]:
         """
         Computes the norm of the function values at given time(s).
 
@@ -994,7 +1005,7 @@ class FunctionOfVariableDimension:
 
         return value_norms
 
-    def dimension(self, t=None):
+    def dimension(self, t: float | list | None = None) -> list:
         """
         Returns the dimension of the function at given time(s).
 
@@ -1003,18 +1014,18 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            t : float, list, or None, optional
-                The time point(s) at which to evaluate the dimension.
+        t : float, list, or None, optional
+            The time point(s) at which to evaluate the dimension.
 
         Returns
         -------
-            dimension_values : list
-                The dimensions at the requested times.
+        dimension_values : list
+            The dimensions at the requested times.
 
         Raises
         ------
-            TypeError
-                If t is not array-like nor a number.
+        TypeError
+            If t is not array-like nor a number.
         """
         # If t is not provided, return dimension for all times
         if t is None:
