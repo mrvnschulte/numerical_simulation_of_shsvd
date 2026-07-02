@@ -1,5 +1,6 @@
 import bisect
 from collections import Counter
+from __future__ import annotations
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -16,81 +17,81 @@ class StatsFunctionsOfVariableDimension:
 
     Attributes
     ----------
-        evaluated_functions : int
-            Count of the functions evaluated.
-        times : list
-            A list of time points for evaluations.
-        order : list
-            A list of orders for norms to be computed.
-        norm_means : np.ndarray
-            Means of the norms for each order over time. The array has the
-            shape (len(order), len(times)).
-        norm_variances : np.ndarray
-            Sample variances of the norms for each order over time. The array
-            has the shape (len(order), len(times)).
-        norm_m2 : np.ndarray
-            Sum of squared differences of the norms for each order over time.
-            The array has the shape (len(order), len(times)).
-        dimension_means : np.ndarray
-            Means of the dimension over time. The array has the length
-            len(times).
-        dimension_variances : np.ndarray
-            Sample variances of the dimension over time. The array has the
-            length len(times).
-        dimension_m2 : np.ndarray
-            Sum of squared differences of the dimension for each order over
-            time. The array has the length len(times).
-        custom_evaluation_functions : list of callables
-            List of user-provided functions to evaluate.
-        cef_means : np.ndarray
-            Means of the custom evaluation functions over time. The array has
-            the shape (len(custom_evaluation_functions), len(times)).
-        cef_variances : np.ndarray
-            Sample variances of the custom evaluation functions over time. The
-            array has the shape (len(custom_evaluation_functions), len(times)).
-        cef_m2 : np.ndarray
-            Sum of squared differences of the custom evaluation functions over
-            time. The array has the shape
-            (len(custom_evaluation_functions), len(times)).
-        collect_jump_times : bool
-            Indicates whether jump times are stored.
-        jump_times : list of lists
-            List of all jump times of evaluated functions. Exists only, when
-            collect_jump_times is True.
-        collect_dimension_jump_times : bool
-            Indicates whether dimension jump times are stored.
-        dimension_jump_times : list of lists
-            List of all dimension jump times of evaluated functions. Exists
-            only, when collect_dimension_jump_times is True.
+    evaluated_functions : int
+        Count of the functions evaluated.
+    times : list
+        A list of time points for evaluations.
+    order : list
+        A list of orders for norms to be computed.
+    norm_means : np.ndarray
+        Means of the norms for each order over time. The array has the
+        shape (len(order), len(times)).
+    norm_variances : np.ndarray
+        Sample variances of the norms for each order over time. The array
+        has the shape (len(order), len(times)).
+    norm_m2 : np.ndarray
+        Sum of squared differences of the norms for each order over time.
+        The array has the shape (len(order), len(times)).
+    dimension_means : np.ndarray
+        Means of the dimension over time. The array has the length
+        len(times).
+    dimension_variances : np.ndarray
+        Sample variances of the dimension over time. The array has the
+        length len(times).
+    dimension_m2 : np.ndarray
+        Sum of squared differences of the dimension for each order over
+        time. The array has the length len(times).
+    custom_evaluation_functions : list of callables
+        List of user-provided functions to evaluate.
+    cef_means : np.ndarray
+        Means of the custom evaluation functions over time. The array has
+        the shape (len(custom_evaluation_functions), len(times)).
+    cef_variances : np.ndarray
+        Sample variances of the custom evaluation functions over time. The
+        array has the shape (len(custom_evaluation_functions), len(times)).
+    cef_m2 : np.ndarray
+        Sum of squared differences of the custom evaluation functions over
+        time. The array has the shape
+        (len(custom_evaluation_functions), len(times)).
+    collect_jump_times : bool
+        Indicates whether jump times are stored.
+    jump_times : list of lists
+        List of all jump times of evaluated functions. Exists only, when
+        collect_jump_times is True.
+    collect_dimension_jump_times : bool
+        Indicates whether dimension jump times are stored.
+    dimension_jump_times : list of lists
+        List of all dimension jump times of evaluated functions. Exists
+        only, when collect_dimension_jump_times is True.
     """
 
     def __init__(
         self,
-        t_span,
-        stepsize=1,
-        t_eval=None,
-        order=2,
-        collect_dimension=True,
-        collect_jump_times=False,
-        collect_dimension_jump_times=False,
-    ):
+        t_span: tuple[float, float],
+        stepsize: float = 1,
+        t_eval: ArrayLike | None = None,
+        order: int | ArrayLike = 2,
+        collect_dimension: bool = True,
+        collect_jump_times: bool = False,
+        collect_dimension_jump_times: bool = False,
+    ) -> None:
         """
         Initializes the statistics collector.
 
         Parameters
         ----------
-            t_span : tuple
-                The start and end times for evaluations.
-            stepsize : float, optional
-                The step size for time evaluations.
-            t_eval : list or array-like, optional
-                Specific times at which to evaluate the functions.
-            order : int, list or array-like, optional
-                The order(s) of the norm(s) to compute.
-            collect_jump_times : bool, optional
-                If True, collect jump times during evaluation.
-            collect_dimension_jump_times : bool, optional
-                If True, collect dimension jump times during evaluation.
+        t_span : tuple
+            The start and end times for evaluations.
+        stepsize : float, optional
+            The step size for time evaluations.
+        t_eval : list or array-like, optional
+            Specific times at which to evaluate the functions.
+        order : int, list or array-like, optional
+            The order(s) of the norm(s) to compute.
+        collect_jump_times : bool, optional
+            If True, collect jump times during evaluation.
+        collect_dimension_jump_times : bool, optional
+            If True, collect dimension jump times during evaluation.
         """
         # Create self.times according to stepsize or t_eval
         t0, tf = t_span
@@ -147,21 +148,21 @@ class StatsFunctionsOfVariableDimension:
 
         self.custom_evaluation_functions = []
 
-    def add_function(self, func):
+    def add_function(self, func: FunctionOfVariableDimension) -> None:
         """
         Adds a function to the statistics collector for evaluation.
 
         Parameters
         ----------
-            func : FunctionOfVariableDimension
-                The function to add and evaluate.
+        func : FunctionOfVariableDimension
+            The function to add and evaluate.
 
         Raises
         ------
-            TypeError
-                If func is not a function of variable dimension.
-            ValueError
-                If the function's time range does not match the collector's.
+        TypeError
+            If func is not a function of variable dimension.
+        ValueError
+            If the function's time range does not match the collector's.
         """
         if not isinstance(func, FunctionOfVariableDimension):
             raise TypeError(f"{func} is not a function of variable dimension")
@@ -239,7 +240,9 @@ class StatsFunctionsOfVariableDimension:
         if self.collect_dimension_jump_times:
             self.dimension_jump_times.append(func.dimension_jump_times())
 
-    def _update_means_and_variances(self, values, old_means, old_m2):
+    def _update_means_and_variances(
+        self, values: np.ndarray, old_means: np.ndarray, old_m2: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Updates the means and variances based on new values.
 
@@ -248,21 +251,21 @@ class StatsFunctionsOfVariableDimension:
 
         Parameters
         ----------
-            values : np.ndarray
-                The new values for which to update statistics.
-            old_means : np.ndarray
-                The current means before the update.
-            old_m2 : np.ndarray
-                The current M2 values before the update.
+        values : np.ndarray
+            The new values for which to update statistics.
+        old_means : np.ndarray
+            The current means before the update.
+        old_m2 : np.ndarray
+            The current M2 values before the update.
 
         Returns
         -------
-            new_means : np.ndarray
-                Updated means with the new values.
-            new_variances : np.ndarray
-                Updated variances with the new values.
-            new_m2 : np.ndarray
-                Updated M2 values with the new values.
+        new_means : np.ndarray
+            Updated means with the new values.
+        new_variances : np.ndarray
+            Updated variances with the new values.
+        new_m2 : np.ndarray
+            Updated M2 values with the new values.
         """
         delta = values - old_means
         new_means = old_means + delta / self.evaluated_functions
@@ -277,47 +280,47 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_norm(
         self,
-        order=2,
-        sigma=2,
-        labels=None,
-        title="Plot of mean norm",
-        legend=True,
-        xlabel="Time",
-        ylabel="Norm",
-        grid=False,
-    ):
+        order: int | ArrayLike = 2,
+        sigma: float = 2,
+        labels: list[str] = None,
+        title: str = "Plot of mean norm",
+        legend: bool = True,
+        xlabel: str = "Time",
+        ylabel: str = "Norm",
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots the mean norms of the collected functions.
 
         Parameters
         ----------
-            order : int or list, optional
-                The order(s) of the norm to plot.
-            sigma : float, optional
-                The factor for the variance shading.
-            labels : list, optional
-                Custom labels for the plot lines.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        order : int or array-like, optional
+            The order(s) of the norm to plot.
+        sigma : float, optional
+            The factor for the variance shading.
+        labels : list, optional
+            Custom labels for the plot lines.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
 
         Raises
         ------
-            ValueError
-                If order to plot is not in order, i.e. has not been stored and
-                computed.
+        ValueError
+            If order to plot is not in order, i.e. has not been stored and
+            computed.
         """
         fig = plt.figure()
 
@@ -362,38 +365,38 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_dimension(
         self,
-        sigma=2,
-        labels=None,
-        title="Plot of mean dimension",
-        legend=False,
-        xlabel="Time",
-        ylabel="Dimension",
-        grid=False,
-    ):
+        sigma: float = 2,
+        labels: list[str] = None,
+        title: str = "Plot of mean dimension",
+        legend: bool = False,
+        xlabel: str = "Time",
+        ylabel: str = "Dimension",
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots the mean dimensions of the collected functions.
 
         Parameters
         ----------
-            sigma : float, optional
-                The factor for the variance shading.
-            labels : list, optional
-                Custom labels for the plot lines.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        sigma : float, optional
+            The factor for the variance shading.
+        labels : list, optional
+            Custom labels for the plot lines.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
         """
         if not self.collect_dimension:
             raise ValueError("Cannot plot dimension if it was not collected.")
@@ -427,38 +430,38 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_cefs(
         self,
-        sigma=2,
-        labels=None,
-        title="Plot of cefs",
-        legend=False,
-        xlabel="Time",
-        ylabel="Value",
-        grid=False,
-    ):
+        sigma: float = 2,
+        labels: list[str] = None,
+        title: str = "Plot of cefs",
+        legend: bool = False,
+        xlabel: str = "Time",
+        ylabel: str = "Value",
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots the means of the custom evaluation functions (CEFs).
 
         Parameters
         ----------
-            sigma : float, optional
-                The factor for the variance shading.
-            labels : list, optional
-                Custom labels for the plot lines.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        sigma : float, optional
+            The factor for the variance shading.
+        labels : list, optional
+            Custom labels for the plot lines.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
         """
         fig = plt.figure()
 
@@ -493,49 +496,49 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_jump_times(
         self,
-        number=None,
-        density=False,
-        separate=False,
-        separate_plots=False,
-        title=None,
-        legend=False,
-        xlabel=None,
-        ylabel=None,
-        grid=False,
-    ):
+        number: list[int] | None = None,
+        density: bool = False,
+        separate: bool = False,
+        separate_plots: bool = False,
+        title: str | None = None,
+        legend: bool = False,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots a histogram of the jump times.
 
         Parameters
         ----------
-            number : list, optional
-                Specific jump numbers to plot.
-            density : bool, optional
-                If True, normalize the histogram.
-            separate : bool, optional
-                If True, plot jumps separately.
-            separate_plots : bool, optional
-                If True, create separate plots for each jump time.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        number : list, optional
+            Specific jump numbers to plot.
+        density : bool, optional
+            If True, normalize the histogram.
+        separate : bool, optional
+            If True, plot jumps separately.
+        separate_plots : bool, optional
+            If True, create separate plots for each jump time.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
 
         Raises
         ------
-            ValueError
-                If jump times have not been collected.
+        ValueError
+            If jump times have not been collected.
         """
         if not self.collect_jump_times:
             raise ValueError(
@@ -610,49 +613,49 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_inter_jump_times(
         self,
-        number=None,
-        density=False,
-        separate=False,
-        separate_plots=False,
-        title=None,
-        legend=False,
-        xlabel=None,
-        ylabel=None,
-        grid=False,
-    ):
+        number: list[int] | None = None,
+        density: bool = False,
+        separate: bool = False,
+        separate_plots: bool = False,
+        title: str | None = None,
+        legend: bool = False,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots a histogram of the inter-jump times.
 
         Parameters
         ----------
-            number : list, optional
-                Specific jump numbers to plot.
-            density : bool, optional
-                If True, normalize the histogram.
-            separate : bool, optional
-                If True, create separate plots for each jump.
-            separate_plots : bool, optional
-                Create separate plots for each inter-jump time.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        number : list, optional
+            Specific jump numbers to plot.
+        density : bool, optional
+            If True, normalize the histogram.
+        separate : bool, optional
+            If True, create separate plots for each jump.
+        separate_plots : bool, optional
+            Create separate plots for each inter-jump time.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
 
         Raises
         ------
-            ValueError
-                If jump times have not been collected.
+        ValueError
+            If jump times have not been collected.
         """
         if not self.collect_jump_times:
             raise ValueError(
@@ -738,40 +741,40 @@ class StatsFunctionsOfVariableDimension:
 
     def plot_number_of_jumps(
         self,
-        density=False,
-        title=None,
-        legend=False,
-        xlabel=None,
-        ylabel=None,
-        grid=False,
-    ):
+        density: bool = False,
+        title: str | None = None,
+        legend: bool = False,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        grid: bool = False,
+    ) -> plt.Figure:
         """
         Plots a histogram of the number of jumps.
 
         Parameters
         ----------
-            density : bool, optional
-                If True, normalize the histogram.
-            title : str, optional
-                The title of the plot.
-            legend : bool, optional
-                If True, show the legend.
-            xlabel : str, optional
-                Label for the x-axis.
-            ylabel : str, optional
-                Label for the y-axis.
-            grid : bool, optional
-                If True, show grid lines on the plot.
+        density : bool, optional
+            If True, normalize the histogram.
+        title : str, optional
+            The title of the plot.
+        legend : bool, optional
+            If True, show the legend.
+        xlabel : str, optional
+            Label for the x-axis.
+        ylabel : str, optional
+            Label for the y-axis.
+        grid : bool, optional
+            If True, show grid lines on the plot.
 
         Returns
         -------
-            fig : FigureObject
-                The figure object created.
+        fig : FigureObject
+            The figure object created.
 
         Raises
         ------
-            ValueError
-                If jump times have not been collected.
+        ValueError
+            If jump times have not been collected.
         """
         if not self.collect_jump_times:
             raise ValueError(
@@ -798,19 +801,19 @@ class StatsFunctionsOfVariableDimension:
 
         return fig
 
-    def add_custom_evaluation_function(self, func):
+    def add_custom_evaluation_function(self, func: callable) -> None:
         """
         Adds a custom evaluation function to be evaluated later.
 
         Parameters
         ----------
-            func : callable
-                The custom evaluation function to add.
+        func : callable
+            The custom evaluation function to add.
 
         Raises
         ------
-            ValueError
-                If functions have already been added.
+        ValueError
+            If functions have already been added.
         """
         if self.evaluated_functions > 0:
             raise ValueError(
@@ -824,13 +827,13 @@ class StatsFunctionsOfVariableDimension:
         self.cef_variances.append(np.zeros(len(self.times)))
         self.cef_m2.append(np.zeros(len(self.times)))
 
-    def evaluate_norm(self, t):
+    def evaluate_norm(self, t: float | ArrayLike):
         """
         Evaluates the mean norm at given time(s).
 
         Parameters
         ----------
-            t : float, list, or array-like
+            t : float, or array-like
                 The time point(s) at which to evaluate the mean norm.
 
         Returns
@@ -842,79 +845,79 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_dimension(self, t):
+    def evaluate_dimension(self, t: float | ArrayLike):
         """
         Evaluates the mean dimension at a given time.
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the mean dimension.
+        t : float, or array-like
+            The time point(s) at which to evaluate the mean dimension.
 
         Returns
         -------
-            value : float, or list
-                Evaluated dimension means.
+        value : float, or list
+            Evaluated dimension means.
         """
         value = self._evaluate(t, self.dimension_means)
 
         return value
 
-    def evaluate_cefs(self, t):
+    def evaluate_cefs(self, t: float | ArrayLike):
         """
         Evaluates the mean of the custom evaluation functions at given time(s).
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the mean of the CEFs.
+        t : float, list, or array-like
+            The time point(s) at which to evaluate the mean of the CEFs.
 
         Returns
         -------
-            value : np.ndarray, or list
-                Evaluated custom evaluation function means.
+        value : np.ndarray, or list
+            Evaluated custom evaluation function means.
         """
         value = self._evaluate(t, self.cef_means)
 
         return value
 
-    def evaluate_norm_variance(self, t):
+    def evaluate_norm_variance(self, t: float | ArrayLike):
         """
         Evaluates the variances of the norms at given time(s).
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the variances.
+        t : float, list, or array-like
+            The time point(s) at which to evaluate the variances.
 
         Returns
         -------
-            value : np.ndarray, or list
-                Evaluated norm variances.
+        value : np.ndarray, or list
+            Evaluated norm variances.
         """
         value = self._evaluate(t, self.norm_variances)
 
         return value
 
-    def evaluate_dimension_variances(self, t):
+    def evaluate_dimension_variances(self, t: float | ArrayLike):
         """
         Evaluates the variances of the dimensions at given time(s).
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the variances.
+        t : float, list, or array-like
+            The time point(s) at which to evaluate the variances.
 
         Returns
         -------
-            value : float, or list
-                Evaluated dimension variances.
+        value : float, or list
+            Evaluated dimension variances.
         """
         value = self._evaluate(t, self.dimension_variances)
 
         return value
 
-    def evaluate_cef_variances(self, t):
+    def evaluate_cef_variances(self, t: float | ArrayLike):
         """
         Evaluates the variances of the cefs at given time(s).
 
@@ -923,29 +926,28 @@ class StatsFunctionsOfVariableDimension:
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the variances of the
-                CEFs.
+        t : float, list, or array-like
+            The time point(s) at which to evaluate the variances of the CEFs.
 
         Returns
         -------
-            value : np.ndarray, or list
-                Evaluated variances of the CEFs.
+        value : np.ndarray, or list
+            Evaluated variances of the CEFs.
         """
         value = self._evaluate(t, self.cef_variances)
 
         return value
 
-    def _evaluate(self, t, values):
+    def _evaluate(self, t: float | ArrayLike, values: ArrayLike):
         """
         Evaluates the specified values at given time points by interpolation.
 
         Parameters
         ----------
-            t : float, list, or array-like
-                The time point(s) at which to evaluate the values.
-            values : array-like
-                The values for interpolation.
+        t : float, list, or array-like
+            The time point(s) at which to evaluate the values.
+        values : array-like
+            The values for interpolation.
 
         Returns
         -------
@@ -961,7 +963,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def _interpolate_value(self, t, values):
+    def _interpolate_value(self, t: float, values: ArrayLike):
         """
         Interpolates the values at a given time(s).
 
@@ -1000,7 +1002,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def __add__(self, other):
+    def __add__(self, other: StatsFunctionsOfVariableDimension):
         """
         Adds two instances of StatsFunctionsOfVariableDimension together.
 

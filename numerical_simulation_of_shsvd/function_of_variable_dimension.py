@@ -1,5 +1,6 @@
 import bisect
 from collections import Counter
+from __future__ import annotations
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -310,7 +311,7 @@ class FunctionOfVariableDimension:
         times: float | ArrayLike,
         values: float | ArrayLike,
         checks: bool = True,
-    ):
+    ) -> None:
         """
         Adds new time-value pairs to the function.
 
@@ -575,21 +576,21 @@ class FunctionOfVariableDimension:
 
     def jump_times(
         self, return_index: bool = False
-    ) -> list | tuple[list, list]:
+    ) -> list[float] | tuple[list[float], list[int]]:
         """
         Returns the times at which jumps occur in the function.
 
         Parameters
         ----------
-            return_index : bool, optional
-                If True, also return the indices of the jump times.
+        return_index : bool, optional
+            If True, also return the indices of the jump times.
 
         Returns
         -------
-            jump_times : list
-                The times at which jumps occur.
-            indices : list, optional
-                The indices of the jump times, if requested.
+        jump_times : list
+            The times at which jumps occur.
+        indices : list, optional
+            The indices of the jump times, if requested.
         """
         if return_index:
             unique_times, indices, counts = np.unique(
@@ -609,7 +610,7 @@ class FunctionOfVariableDimension:
 
     def dimension_jump_times(
         self, return_index: bool = False
-    ) -> list | tuple[list, list]:
+    ) -> list[float] | tuple[list[float], list[int]]:
         """
         Returns the times at which dimension jumps occur.
 
@@ -641,22 +642,22 @@ class FunctionOfVariableDimension:
 
     def non_dimension_jump_times(
         self, return_index: bool = False
-    ) -> list | tuple[list, list]:
+    ) -> list[float] | tuple[list[float], list[int]]:
         """
         Returns the jump times at which the dimension does not change.
 
         Parameters
         ----------
-            return_index : bool, optional
-                If True, also return the indices of the non-dimension jump
-                times.
+        return_index : bool, optional
+            If True, also return the indices of the non-dimension jump
+            times.
 
         Returns
         -------
-            non_dimension_jump_times : list
-                The jump times at which there are no dimension jumps.
-            non_dimension_jump_indices : list, optional
-                The indices of the non-dimension jump times, if requested.
+        non_dimension_jump_times : list
+            The jump times at which there are no dimension jumps.
+        non_dimension_jump_indices : list, optional
+            The indices of the non-dimension jump times, if requested.
         """
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_jump_times, dimension_jump_indices = (
@@ -678,7 +679,7 @@ class FunctionOfVariableDimension:
         self,
         title: str = "Plot of the coordinates",
         legend: bool = True,
-        labels: list | None = None,
+        labels: list[str] | None = None,
         xlabel: str = "Time",
         ylabel: str = "Value",
         separate_plots: bool = False,
@@ -877,7 +878,7 @@ class FunctionOfVariableDimension:
         order: int = 2,
         title: str = "Plot of the norm",
         legend: bool = True,
-        labels: list | None = None,
+        labels: list[str] | None = None,
         xlabel: str = "Time",
         ylabel: str = "Value",
         grid: bool = False,
@@ -971,10 +972,10 @@ class FunctionOfVariableDimension:
 
     def norm(
         self,
-        t: float | list | None = None,
+        t: float | ArrayLike | None = None,
         order: int | None = None,
         return_times: bool = False,
-    ) -> list | tuple[list, list]:
+    ) -> list[float] | tuple[list[float], list[float]]:
         """
         Computes the norm of the function values at given time(s).
 
@@ -983,8 +984,10 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            t : float, list, or None, optional
-                The time point(s) at which to evaluate the norm.
+            t : float, array-like, or None, optional
+                The time point(s) at which to evaluate the norm. If None is
+                given, norm is evaluated at all times in self.times. The
+                default is None.
             order : int or None, optional
                 The order of the norm to compute.
             return_times : bool, optional
@@ -1009,7 +1012,7 @@ class FunctionOfVariableDimension:
 
         return value_norms
 
-    def dimension(self, t: float | list | None = None) -> list:
+    def dimension(self, t: float | ArrayLike | None = None) -> list[int]:
         """
         Returns the dimension of the function at given time(s).
 
@@ -1018,7 +1021,7 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-        t : float, list, or None, optional
+        t : float, array-like, or None, optional
             The time point(s) at which to evaluate the dimension.
 
         Returns
@@ -1069,19 +1072,19 @@ class FunctionOfVariableDimension:
         else:
             raise TypeError(f"{t} is not array-like nor a number")
 
-    def left_limit(self, t):
+    def left_limit(self, t: float | ArrayLike):
         """
         Returns the left limit(s) of the function at given time(s).
 
         Parameters
         ----------
-            t : float or array-like
-                The time(s) at which to evaluate the left limit(s).
+        t : float or array-like
+            The time(s) at which to evaluate the left limit(s).
 
         Returns
         -------
-            value : list
-                The value(s) of the left limit(s).
+        value : list
+            The value(s) of the left limit(s).
         """
         if isinstance(t, (list, np.ndarray)):
             value = [self.left_limit(time) for time in t]
@@ -1092,26 +1095,28 @@ class FunctionOfVariableDimension:
 
         return value
 
-    def concatenate(self, other):
+    def concatenate(
+        self, other: FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Concatenates this function with another function of variable dimension.
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to concatenate with.
+        other : FunctionOfVariableDimension
+            The function to concatenate with.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                The concatenated function.
+        func : FunctionOfVariableDimension
+            The concatenated function.
 
         Raises
         ------
-            TypeError
-                If the other object is not a function of variable dimension.
-            ValueError
-                If the dimensions of the functions do not match at overlap.
+        TypeError
+            If the other object is not a function of variable dimension.
+        ValueError
+            If the dimensions of the functions do not match at overlap.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             raise TypeError(f"{other} is not a function of variable dimension")
@@ -1210,14 +1215,14 @@ class FunctionOfVariableDimension:
 
         return func
 
-    def __neg__(self):
+    def __neg__(self) -> FunctionOfVariableDimension:
         """
         Negates the values of the function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with negated values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with negated values.
         """
         negative_values = []
         for value in self.values:
@@ -1225,25 +1230,27 @@ class FunctionOfVariableDimension:
         func = FunctionOfVariableDimension(self.times, negative_values)
         return func
 
-    def __add__(self, other):
+    def __add__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Adds the values of this function to another value or function.
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to add to the values of this function.
+        other : float, array-like, or FunctionOfVariableDimension
+            The value or function to add to the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the added values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the added values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when adding another function or an
-                array.
+        ValueError
+            If dimensions do not match when adding another function or an
+            array.
         """
         # If number is added, add it to every value
         if isinstance(
@@ -1333,42 +1340,46 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __radd__(self, other):
+    def __radd__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Adds another value or function to the values of this function.
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to add to the values of this function.
+        other : float, or array-like, or FunctionOfVariableDimension
+            The value or function to add to the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the added values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the added values.
         """
         return self + other
 
-    def __sub__(self, other):
+    def __sub__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Subtracts a value or function from the values of this function.
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to subtract from the values of this
-                function.
+        other : float, array-like, or FunctionOfVariableDimension
+            The value or function to subtract from the values of this
+            function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the subtracted values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the subtracted values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when subtracting another function or
-                an array.
+        ValueError
+            If dimensions do not match when subtracting another function or
+            an array.
         """
         # If number is subtracted, subtract it from every value
         if isinstance(
@@ -1459,42 +1470,46 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __rsub__(self, other):
+    def __rsub__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Subtracts the values of this function from another value.
 
         Parameters
         ----------
-            other : int, float, or array-like
-                The value from which to subtract the values of this function.
+        other : float, or array-like
+            The value from which to subtract the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the subtracted values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the subtracted values.
         """
         return -self + other
 
-    def __mul__(self, other):
+    def __mul__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Multiplies the values of this function by another value or function.
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to multiply with the values of this
-                function.
+        other : float, array-like, or FunctionOfVariableDimension
+            The value or function to multiply with the values of this
+            function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the multiplied values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the multiplied values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when multiplying by another function
-                or an array.
+        ValueError
+            If dimensions do not match when multiplying by another function
+            or an array.
         """
         # If number is multiplied, multiply it with every value
         if isinstance(
@@ -1585,42 +1600,46 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __rmul__(self, other):
+    def __rmul__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Multiplies another value with the values of this function.
 
         Parameters
         ----------
-            other : int, float or array-like
-                The value to multiply with the values of this function.
+        other : float or array-like
+            The value to multiply with the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the multiplied values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the multiplied values.
         """
         return self * other
 
-    def __truediv__(self, other):
+    def __truediv__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Divides the values of this function by another value or function.
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to divide the values of this
-                function by.
+        other : float, array-like, or FunctionOfVariableDimension
+            The value or function to divide the values of this
+            function by.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the divided values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the divided values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when dividing by another function or
-                an array.
+        ValueError
+            If dimensions do not match when dividing by another function or
+            an array.
         """
         # If division by a number, divide every value by it
         if isinstance(
@@ -1711,19 +1730,21 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Divides another value by the values of this function.
 
         Parameters
         ----------
-            other : int, float or array-like
-                The value to divide by the values of this function.
+        other : float or array-like
+            The value to divide by the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the divided values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the divided values.
         """
         # If number is divide, divide it by every value
         if isinstance(
@@ -1776,7 +1797,9 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __mod__(self, other):
+    def __mod__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Computes the modulus of this function values with other ones.
 
@@ -1785,19 +1808,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other: int, float, array-like, or FunctionOfVariableDimension
-                The value or function to compute the modulus with.
+        other: float, array-like, or FunctionOfVariableDimension
+            The value or function to compute the modulus with.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the modulus values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the modulus values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when taking modulus with another
-                function or an array.
+        ValueError
+            If dimensions do not match when taking modulus with another
+            function or an array.
         """
         # If modulus to number is computed, compute modulus of every value to
         # it
@@ -1889,19 +1912,21 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __rmod__(self, other):
+    def __rmod__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Computes the modulus of another value with the function values.
 
         Parameters
         ----------
-            other : int, float or array-like
-                The value to compute modulus with the values of this function.
+        other : float or array-like
+            The value to compute modulus with the values of this function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the modulus values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the modulus values.
         """
         # If modulus to number is computed, compute modulus of every value to
         # it
@@ -1955,7 +1980,9 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __pow__(self, other):
+    def __pow__(
+        self, other: float | ArrayLike | FunctionOfVariableDimension
+    ) -> FunctionOfVariableDimension:
         """
         Raises the function values to the power of other values.
 
@@ -1964,19 +1991,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other : int, float, array-like, or FunctionOfVariableDimension
-                The value or function to raise the values of this function to.
+        other : float, array-like, or FunctionOfVariableDimension
+            The value or function to raise the values of this function to.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the exponentiated values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the exponentiated values.
 
         Raises
         ------
-            ValueError
-                If dimensions do not match when exponentiating by another
-                function or an array.
+        ValueError
+            If dimensions do not match when exponentiating by another
+            function or an array.
         """
         # If power to number is computed, compute power of every value to the
         # number
@@ -2068,20 +2095,22 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __rpow__(self, other):
+    def __rpow__(
+        self, other: float | ArrayLike
+    ) -> FunctionOfVariableDimension:
         """
         Raises another value to the power of the values of this function.
 
         Parameters
         ----------
-            other : int, float or array-like
-                The value to raise to the powers of the values of this
-                function.
+        other : float or array-like
+            The value to raise to the powers of the values of this
+            function.
 
         Returns
         -------
-            func : FunctionOfVariableDimension
-                A new instance of the function with the exponentiated values.
+        func : FunctionOfVariableDimension
+            A new instance of the function with the exponentiated values.
         """
         # If power to number is computed, compute power of number to every
         # value
@@ -2135,19 +2164,19 @@ class FunctionOfVariableDimension:
         else:
             return NotImplemented
 
-    def __eq__(self, other):
+    def __eq__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for equality.
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the functions are equal, False otherwise.
+        bool
+            True if the functions are equal, False otherwise.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             return False
@@ -2199,23 +2228,23 @@ class FunctionOfVariableDimension:
                 )
                 return bool1 and bool2 and bool3 and bool4
 
-    def __ne__(self, other):
+    def __ne__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for inequality.
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the functions are not equal, False otherwise.
+        bool
+            True if the functions are not equal, False otherwise.
         """
         return not self == other
 
-    def __gt__(self, other):
+    def __gt__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for being greater.
 
@@ -2224,19 +2253,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the coordinate values of this function are greater than
-                the other ones, False otherwise.
+        bool
+            True if the coordinate values of this function are greater than
+            the other ones, False otherwise.
 
         Raises
         ------
-            ValueError
-                If the functions have different time ranges or dimensions.
+        ValueError
+            If the functions have different time ranges or dimensions.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             return NotImplemented
@@ -2297,7 +2326,7 @@ class FunctionOfVariableDimension:
                 )
                 return bool1 and bool2 and bool3 and bool4
 
-    def __lt__(self, other):
+    def __lt__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for being less.
 
@@ -2306,19 +2335,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the coordinate values of this function are less than
-                the other ones, False otherwise.
+        bool
+            True if the coordinate values of this function are less than
+            the other ones, False otherwise.
 
         Raises
         ------
-            ValueError
-                If the functions have different time ranges or dimensions.
+        ValueError
+            If the functions have different time ranges or dimensions.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             return NotImplemented
@@ -2379,7 +2408,7 @@ class FunctionOfVariableDimension:
                 )
                 return bool1 and bool2 and bool3 and bool4
 
-    def __ge__(self, other):
+    def __ge__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for being greater or equal.
 
@@ -2388,19 +2417,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the coordinate values of this function are greater than
-                or equal to the other ones, False otherwise.
+        bool
+            True if the coordinate values of this function are greater than
+            or equal to the other ones, False otherwise.
 
         Raises
         ------
-            ValueError
-                If the functions have different time ranges or dimensions.
+        ValueError
+            If the functions have different time ranges or dimensions.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             return NotImplemented
@@ -2461,7 +2490,7 @@ class FunctionOfVariableDimension:
                 )
                 return bool1 and bool2 and bool3 and bool4
 
-    def __le__(self, other):
+    def __le__(self, other: FunctionOfVariableDimension) -> bool:
         """
         Compare this function with another one for being less or equal.
 
@@ -2470,19 +2499,19 @@ class FunctionOfVariableDimension:
 
         Parameters
         ----------
-            other : FunctionOfVariableDimension
-                The function to compare with.
+        other : FunctionOfVariableDimension
+            The function to compare with.
 
         Returns
         -------
-            bool
-                True if the coordinate values of this function are less than or
-                equal to the other ones, False otherwise.
+        bool
+            True if the coordinate values of this function are less than or
+            equal to the other ones, False otherwise.
 
         Raises
         ------
-            ValueError
-                If the functions have different time ranges or dimensions.
+        ValueError
+            If the functions have different time ranges or dimensions.
         """
         if not isinstance(other, FunctionOfVariableDimension):
             return NotImplemented
