@@ -1,13 +1,13 @@
+from __future__ import annotations
 import bisect
 from collections import Counter
-from __future__ import annotations
 
 import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 import scipy.linalg as la
 
-from .function_of_variable_dimension import FunctionOfVariableDimension
+from function_of_variable_dimension import FunctionOfVariableDimension
 
 
 class StatsFunctionsOfVariableDimension:
@@ -827,7 +827,7 @@ class StatsFunctionsOfVariableDimension:
         self.cef_variances.append(np.zeros(len(self.times)))
         self.cef_m2.append(np.zeros(len(self.times)))
 
-    def evaluate_norm(self, t: float | ArrayLike):
+    def evaluate_norm(self, t: float | ArrayLike) -> list:
         """
         Evaluates the mean norm at given time(s).
 
@@ -845,7 +845,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_dimension(self, t: float | ArrayLike):
+    def evaluate_dimension(self, t: float | ArrayLike) -> list:
         """
         Evaluates the mean dimension at a given time.
 
@@ -863,7 +863,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_cefs(self, t: float | ArrayLike):
+    def evaluate_cefs(self, t: float | ArrayLike) -> list:
         """
         Evaluates the mean of the custom evaluation functions at given time(s).
 
@@ -881,7 +881,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_norm_variance(self, t: float | ArrayLike):
+    def evaluate_norm_variance(self, t: float | ArrayLike) -> list:
         """
         Evaluates the variances of the norms at given time(s).
 
@@ -899,7 +899,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_dimension_variances(self, t: float | ArrayLike):
+    def evaluate_dimension_variances(self, t: float | ArrayLike) -> list:
         """
         Evaluates the variances of the dimensions at given time(s).
 
@@ -917,7 +917,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def evaluate_cef_variances(self, t: float | ArrayLike):
+    def evaluate_cef_variances(self, t: float | ArrayLike) -> list:
         """
         Evaluates the variances of the cefs at given time(s).
 
@@ -938,7 +938,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def _evaluate(self, t: float | ArrayLike, values: ArrayLike):
+    def _evaluate(self, t: float | ArrayLike, values: ArrayLike) -> list:
         """
         Evaluates the specified values at given time points by interpolation.
 
@@ -963,7 +963,7 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def _interpolate_value(self, t: float, values: ArrayLike):
+    def _interpolate_value(self, t: float, values: ArrayLike) -> float:
         """
         Interpolates the values at a given time(s).
 
@@ -1002,7 +1002,9 @@ class StatsFunctionsOfVariableDimension:
 
         return value
 
-    def __add__(self, other: StatsFunctionsOfVariableDimension):
+    def __add__(
+        self, other: StatsFunctionsOfVariableDimension
+    ) -> StatsFunctionsOfVariableDimension:
         """
         Adds two instances of StatsFunctionsOfVariableDimension together.
 
@@ -1139,7 +1141,9 @@ class StatsFunctionsOfVariableDimension:
 
         return stats
 
-    def __sub__(self, other):
+    def __sub__(
+        self, other: StatsFunctionsOfVariableDimension
+    ) -> StatsFunctionsOfVariableDimension:
         """
         Subtracts another instance of StatsFunctionsOfVariableDimension.
 
@@ -1313,7 +1317,9 @@ class StatsFunctionsOfVariableDimension:
 
         return stats
 
-    def __eq__(self, other):
+    def __eq__(
+        self, other: StatsFunctionsOfVariableDimension
+    ) -> StatsFunctionsOfVariableDimension:
         """
         Compare this statistics object with another for equality.
 
@@ -1343,7 +1349,9 @@ class StatsFunctionsOfVariableDimension:
             if key != "custom_evaluation_functions"
         )
 
-    def __ne__(self, other):
+    def __ne__(
+        self, other: StatsFunctionsOfVariableDimension
+    ) -> StatsFunctionsOfVariableDimension:
         """
         Compare this statistics object with another for inequality.
 
@@ -1364,7 +1372,14 @@ class StatsFunctionsOfVariableDimension:
         return not (self == other)
 
     @staticmethod
-    def _add_means_and_m2(means_x, means_y, m2_x, m2_y, n, m):
+    def _add_means_and_m2(
+        means_x: np.ndarray,
+        means_y: np.ndarray,
+        m2_x: np.ndarray,
+        m2_y: np.ndarray,
+        n: int,
+        m: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Add means and second moments of variable with n and m realizations.
 
@@ -1396,7 +1411,14 @@ class StatsFunctionsOfVariableDimension:
         return means, m2
 
     @staticmethod
-    def _subtract_means_and_m2(means_xy, means_y, m2_xy, m2_y, n, m):
+    def _subtract_means_and_m2(
+        means_xy: np.ndarray,
+        means_y: np.ndarray,
+        m2_xy: np.ndarray,
+        m2_y: np.ndarray,
+        n: int,
+        m: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Subtract means and 2nd moments of variable with n and m realizations.
 
@@ -1428,7 +1450,7 @@ class StatsFunctionsOfVariableDimension:
         return means, m2
 
     @staticmethod
-    def _is_sublist(list1, list2):
+    def _is_sublist(list1: list[list], list2: list[list]) -> bool:
         """
         Checks if list1 is a sublist of list2.
 
@@ -1450,7 +1472,7 @@ class StatsFunctionsOfVariableDimension:
         return all(counter1[item] <= counter2[item] for item in counter1)
 
     @staticmethod
-    def list_difference(list1, list2):
+    def list_difference(list1: list[list], list2: list[list]) -> list:
         """
         Remove list1 from list2 if it is a sublist.
 
@@ -1486,7 +1508,7 @@ class StatsFunctionsOfVariableDimension:
         return result
 
     @staticmethod
-    def _partial_t_eval(t_eval, t0, tf):
+    def _partial_t_eval(t_eval: ArrayLike, t0: float, tf: float) -> np.ndarray:
         """
         Reduces t_eval to values between t0 and tf.
 
