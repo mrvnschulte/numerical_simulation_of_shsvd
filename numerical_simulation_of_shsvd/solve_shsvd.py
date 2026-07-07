@@ -1,7 +1,7 @@
 from scipy.integrate import solve_ivp
 import numpy as np
-from .function_vd import (
-    FunctionOfVariableDimension,
+from .function_of_variable_dimension import FunctionOfVariableDimension
+from .stats_functions_of_variable_dimension import (
     StatsFunctionsOfVariableDimension,
 )
 import random

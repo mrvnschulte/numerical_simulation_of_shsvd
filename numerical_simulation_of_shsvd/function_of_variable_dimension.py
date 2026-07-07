@@ -1,9 +1,9 @@
 from __future__ import annotations
 import bisect
 
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import ArrayLike
-import matplotlib.pyplot as plt
 import scipy.linalg as la
 
 
@@ -50,7 +50,9 @@ class FunctionOfVariableDimension:
         Raises
         ------
         ValueError
-            If times and values are not the same length or not array-like.
+            If times and values are not the same length.
+        TypeError
+            If times and values are not numbers or not array-like.
         """
         if times is None and values is None:
             self.times = []
@@ -66,16 +68,31 @@ class FunctionOfVariableDimension:
                 isinstance(times, (list, np.ndarray))
                 and isinstance(values, (list, np.ndarray))
             ):
-                raise ValueError("Times and/or values are not array-like")
+                raise TypeError("Times and/or values are not array-like")
+            if not all(
+                isinstance(t, (int, float, np.floating, np.integer))
+                for t in times
+            ):
+                raise TypeError(
+                    f"All entries in times must be numeric, got: "
+                    f"{[t for t in times if not isinstance(t, (int, float, np.floating, np.integer))]}"
+                )
             if not (len(times) == len(values)):
                 raise ValueError("Times and values are not of same length")
             for index, value in enumerate(values):
                 if checks or np.isscalar(value):
                     values[index] = self._convert_to_list(value)
                 if isinstance(values[index], (list, np.ndarray)):
+                    if not all(
+                        isinstance(v, (int, float, np.floating, np.integer))
+                        for v in values[index]
+                    ):
+                        raise TypeError(
+                            f"All entries in values must be numeric, got: {values[index]}"
+                        )
                     continue
                 else:
-                    raise ValueError(
+                    raise TypeError(
                         f"{value} in values is not array-like nor can it be converted"
                     )
 
@@ -327,14 +344,25 @@ class FunctionOfVariableDimension:
                 for time, value in zip(times, values):
                     self.delete_values(time, value)
             elif values is None:
-                for time, index in zip(times, indices):
+                indices = list(indices)
+                for i, (time, index) in enumerate(zip(times, indices)):
                     self.delete_values(time, indices=index)
+                    for j in range(i + 1, len(indices)):
+                        if indices[j] > index:
+                            indices[j] -= 1
+
             else:
-                for time, value, index in zip(times, values, indices):
+                indices = list(indices)
+                for i, (time, value, index) in enumerate(
+                    zip(times, values, indices)
+                ):
                     self.delete_values(time, value, index)
+                    for j in range(i + 1, len(indices)):
+                        if indices[j] > index:
+                            indices[j] -= 1
 
         # If time is not stored, raise an error
-        elif np.isscalar(times):
+        elif isinstance(times, (int, float, np.integer, np.floating)):
             raise ValueError(f"{times} is not in the times of the function")
 
         elif values in self.values:
@@ -359,13 +387,19 @@ class FunctionOfVariableDimension:
 
         # If multiple values are provided, delete each together with the
         # corresponding index if provided
-        elif isinstance(values[0], (list, np.ndarray)):
+        elif isinstance(values, (list, np.ndarray)) and isinstance(
+            values[0], (list, np.ndarray)
+        ):
             if indices is None:
                 for value in values:
                     self.delete_values(values=value)
             else:
-                for value, index in zip(values, indices):
+                indices = list(indices)
+                for i, (value, index) in enumerate(zip(values, indices)):
                     self.delete_values(values=value, indices=index)
+                    for j in range(i + 1, len(indices)):
+                        if indices[j] > index:
+                            indices[j] -= 1
 
         # If value is provided, that is not stored, raise an error
         elif values is not None:
@@ -385,8 +419,12 @@ class FunctionOfVariableDimension:
         # If multiple indices are provided, delete the corresponding time-value
         # pairs
         elif isinstance(indices, (list, np.ndarray)):
-            for index in indices:
+            indices = list(indices)
+            for i, index in enumerate(indices):
                 self.delete_values(indices=index)
+                for j in range(i + 1, len(indices)):
+                    if indices[j] > index:
+                        indices[j] -= 1
 
         else:
             raise TypeError("Input format not correct")
@@ -447,7 +485,7 @@ class FunctionOfVariableDimension:
             return dimension_values
 
         # If t is a number, return the dimension at that time
-        elif np.isscalar(t):
+        elif isinstance(t, (int, float, np.integer, np.floating)):
             dimension_values = self.dimension()
             if t == self.times[-1]:
                 return dimension_values[-1]
@@ -564,7 +602,9 @@ class FunctionOfVariableDimension:
 
         if return_index:
             non_dimension_jump_indices = list(
-                jump_indices[~np.isin(jump_indices, dimension_jump_indices)]
+                np.array(jump_indices)[
+                    ~np.isin(jump_indices, dimension_jump_indices)
+                ]
             )
             return non_dimension_jump_times, non_dimension_jump_indices
         else:
@@ -769,7 +809,7 @@ class FunctionOfVariableDimension:
         grid: bool = False,
         show_jump_times: bool = False,
         show_dimension_jump_times: bool = False,
-    ) -> plt.Figure:
+    ) -> plt.Figure | list[plt.Figure]:
         """
         Plots the coordinates of the function over time.
 
@@ -808,7 +848,7 @@ class FunctionOfVariableDimension:
 
         Returns
         -------
-        fig : plt.Figure
+        fig : plt.Figure or list of plt.Figure
             The created figure object.
         """
         # Create figures
@@ -960,6 +1000,8 @@ class FunctionOfVariableDimension:
 
         plt.show()
 
+        if separate_plots:
+            return figures
         return fig
 
     def plot_norm(
@@ -1104,7 +1146,7 @@ class FunctionOfVariableDimension:
             array.
         """
         # If number is added, add it to every value
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) + other)
@@ -1113,8 +1155,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError("Can only add list/array of numbers")
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError("Can only add list/array of numbers")
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 dimension = len(value)
@@ -1213,7 +1257,7 @@ class FunctionOfVariableDimension:
             If the functions do not share the same time range.
         """
         # If number is subtracted, subtract it from every value
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) - other)
@@ -1223,8 +1267,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError("Can only subtract list/array of numbers")
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError("Can only subtract list/array of numbers")
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 dimension = len(value)
@@ -1319,7 +1365,7 @@ class FunctionOfVariableDimension:
             or an array.
         """
         # If number is multiplied, multiply it with every value
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) * other)
@@ -1329,8 +1375,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError("Can only multiply list/array of numbers")
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError("Can only multiply list/array of numbers")
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 dimension = len(value)
@@ -1425,7 +1473,7 @@ class FunctionOfVariableDimension:
             an array.
         """
         # If division by a number, divide every value by it
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) / other)
@@ -1435,10 +1483,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
-                        "Can only divide by list/array of numbers"
-                    )
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError("Can only divide by list/array of numbers")
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 dimension = len(value)
@@ -1508,7 +1556,7 @@ class FunctionOfVariableDimension:
             A new instance of the function with the divided values.
         """
         # If number is divided, divide it by every value
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(other / np.array(value))
@@ -1518,10 +1566,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
-                        "Can only divide by list/array of numbers"
-                    )
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError("Can only divide by list/array of numbers")
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 dimension = len(value)
@@ -1560,7 +1608,7 @@ class FunctionOfVariableDimension:
         """
         # If modulus to number is computed, compute modulus of every value to
         # it
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) % other)
@@ -1570,8 +1618,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError(
                         "Can only take modulus to list/array of numbers"
                     )
             func = FunctionOfVariableDimension(self.times, self.values)
@@ -1644,7 +1694,7 @@ class FunctionOfVariableDimension:
         """
         # If modulus to number is computed, compute modulus of every value to
         # it
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(other % np.array(value))
@@ -1654,8 +1704,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError(
                         "Can only take modulus to list/array of numbers"
                     )
             func = FunctionOfVariableDimension(self.times, self.values)
@@ -1696,7 +1748,7 @@ class FunctionOfVariableDimension:
         """
         # If power to number is computed, compute power of every value to the
         # number
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(np.array(value) ** other)
@@ -1706,8 +1758,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError(
                         "Can only take power of list/array of numbers"
                     )
             func = FunctionOfVariableDimension(self.times, self.values)
@@ -1781,7 +1835,7 @@ class FunctionOfVariableDimension:
         """
         # If power to number is computed, compute power of number to every
         # value
-        if np.isscalar(other):
+        if np.isscalar(other) and not isinstance(other, (bool, str)):
             func = FunctionOfVariableDimension(self.times, self.values)
             for i, value in enumerate(func.values):
                 func.values[i] = list(other ** np.array(value))
@@ -1791,8 +1845,10 @@ class FunctionOfVariableDimension:
         elif isinstance(other, (list, np.ndarray)):
             array_length = len(other)
             for value in other:
-                if not np.isscalar(value):
-                    raise ValueError(
+                if not isinstance(
+                    value, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError(
                         "Can only take power of list/array of numbers"
                     )
             func = FunctionOfVariableDimension(self.times, self.values)
@@ -2330,13 +2386,20 @@ class FunctionOfVariableDimension:
         jump_times, jump_indices = self.jump_times(return_index=True)
         dimension_values = self.dimension()
 
-        for i in range(len(jump_indices) - 1):
+        if len(jump_indices) == 0:
+            segments = [(0, len(dimension_values))]
+        else:
+            segments = (
+                [(0, jump_indices[0] + 1)]
+                + [
+                    (jump_indices[i] + 1, jump_indices[i + 1] + 1)
+                    for i in range(len(jump_indices) - 1)
+                ]
+                + [(jump_indices[-1] + 1, len(dimension_values))]
+            )
 
-            start = jump_indices[i] + 1
-            end = jump_indices[i + 1] + 1
-
+        for start, end in segments:
             dimension = dimension_values[start]
-
             for j in range(start + 1, end):
                 if dimension_values[j] != dimension:
                     raise ValueError(
