@@ -114,7 +114,6 @@ tests/
 pyproject.toml
 README.md
 ```
-````
 
 ## Usage
 
