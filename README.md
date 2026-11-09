@@ -1,5 +1,5 @@
 [![Tests](https://github.com/mrvnschulte/numerical_simulation_of_shsvd/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/mrvnschulte/numerical_simulation_of_shsvd/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/mrvnschulte/cross_immunity_model/branch/master/graph/badge.svg)](https://codecov.io/gh/mrvnschulte/numerical_simulation_of_shsvd)
+[![codecov](https://codecov.io/gh/mrvnschulte/numerical_simulation_of_shsvd/branch/master/graph/badge.svg)](https://codecov.io/gh/mrvnschulte/numerical_simulation_of_shsvd)
 [![Documentation](https://img.shields.io/badge/documentation-GitHub%20Pages-blue)](https://mrvnschulte.github.io/numerical_simulation_of_shsvd/)
 
 <p align="center">
