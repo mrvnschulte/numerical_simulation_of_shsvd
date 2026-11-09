@@ -124,6 +124,26 @@ class TestInit:
         with pytest.raises(TypeError):
             FunctionOfVariableDimension([0.0], [{0: [8, 9]}])
 
+    def test_times_or_values_not_array_like_raises(self):
+        with pytest.raises(
+            TypeError, match="Times and/or values are not array-like"
+        ):
+            FunctionOfVariableDimension(
+                times=(0.0, 1.0),
+                values=[[1.0], [2.0]],
+                checks=False,
+            )
+
+    def test_value_not_array_like_raises(self):
+        with pytest.raises(
+            TypeError, match="is not array-like nor can it be converted"
+        ):
+            FunctionOfVariableDimension(
+                times=[0.0],
+                values=[(1.0, 2.0)],
+                checks=False,
+            )
+
 
 # ---------------------------------------------------------------------------
 # __call__
@@ -156,30 +176,6 @@ class TestCall:
 
     def test_at_dim_jump_time_returns_right_limit(self, with_dim_jump):
         assert len(with_dim_jump(1.0)) == 3
-
-
-# ---------------------------------------------------------------------------
-# _convert_to_list
-# ---------------------------------------------------------------------------
-
-
-class TestConvertToList:
-    def test_scalar(self):
-        assert FunctionOfVariableDimension._convert_to_list(3.0) == [3.0]
-
-    def test_numpy_array(self):
-        result = FunctionOfVariableDimension._convert_to_list(
-            np.array([1, 2, 3])
-        )
-        assert isinstance(result, list)
-        assert result == [1, 2, 3]
-
-    def test_list_unchanged(self):
-        lst = [1, 2, 3]
-        assert FunctionOfVariableDimension._convert_to_list(lst) is lst
-
-    def test_integer(self):
-        assert FunctionOfVariableDimension._convert_to_list(5) == [5]
 
 
 # ---------------------------------------------------------------------------

@@ -2,3 +2,4 @@ __pycache__/
 *.jpg
 build/*
 numerical_simulation_of_shsvd.egg-info/*
+plots/

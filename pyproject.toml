@@ -1,28 +1,25 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "numerical_simulation_of_shsvd"
-version = "0.1.0"
-description = "Package for numerically solving stochastic hybrid systems of variable dimension (SHSVD)"
+version = "0.2.0"
+description = "Numerical solvers for stochastic hybrid systems of variable dimension"
 readme = "README.md"
-
 authors = [
-    {name = "Marvin Schulte", email = "marvin.schulte@itwm.fraunhofer.de"}
+    { name = "Marvin Schulte", email = "marvin.schulte@itwm.fraunhofer.de" },
 ]
-
-requires-python = ">=3.9"
-
+requires-python = ">=3.10"
 dependencies = [
-    "matplotlib>=3.5.0",
-    "numpy>=1.20.0",
-    "scipy>=1.7.0",
+    "matplotlib>=3.5",
+    "numpy>=1.20",
+    "scipy>=1.7",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
+    "pytest>=7",
     "pytest-cov",
 ]
 
