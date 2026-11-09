@@ -3,7 +3,7 @@
 [![Documentation](https://img.shields.io/badge/documentation-GitHub%20Pages-blue)](https://mrvnschulte.github.io/numerical_simulation_of_shsvd/)
 
 <p align="center">
-  <img src="docs/source/_static/logo.png" alt="Numerical Simulation of SHSVD logo" width="180">
+  <img src="docs/source/_static/Logo.png" alt="Numerical Simulation of SHSVD logo" width="180">
 </p>
 
 
