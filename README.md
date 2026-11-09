@@ -66,6 +66,9 @@ A jump is represented by two consecutive entries with the same time:
 Between stored points, values are interpolated linearly. Evaluating a trajectory
 at a jump time returns the value after the jump.
 
+Ersetze den Abschnitt **Project Structure** im README durch:
+
+````markdown
 ## Project Structure
 
 ```text
@@ -88,9 +91,18 @@ examples/
     └── variable_dimension_function.py
 
 tests/
+├── test_function_of_variable_dimension.py
+├── test_init.py
+├── test_solve_hsvd.py
+├── test_solve_shsvd.py
+├── test_solve_shsvd_single_run.py
+├── test_stats_functions_of_variable_dimension.py
+└── test_utils.py
+
 pyproject.toml
 README.md
 ```
+````
 
 ## Usage
 
