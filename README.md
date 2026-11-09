@@ -8,7 +8,7 @@ This package provides solvers and analysis tools for systems whose state
 dimension may change at jumps. It includes:
 
 - A solver for deterministic hybrid systems with prescribed jumps and jump-set events
-- Simulation of individual stochastic trajectories using a jump-rate bound
+- Simulation of individual trajectories of stochastic hybrid systems of variable dimension
 - Statistical analysis across multiple stochastic trajectories
 - A representation of functions with variable dimension, including jumps and interpolation
 - Tools for collecting and plotting statistics of norms, dimensions, jump times, and custom evaluations
@@ -46,7 +46,7 @@ A hybrid system combines continuous dynamics with discrete transitions:
 - **Flow:** Between jumps, the state evolves according to a user-defined differential equation.
 - **Prescribed jumps:** Transitions occur at specified times.
 - **Jump-set events:** Transitions occur when a user-defined event function reaches zero.
-- **Stochastic jumps:** Candidate jumps are generated using an upper bound on the jump rate and accepted according to the current rate.
+- **Stochastic jumps:** Transitions occur randomly with a jump rate which depends on the state of the system.
 
 A transition can change both the state value and its dimension. For example, an
 oscillator may switch between an oscillating state `[position, velocity]` and a
@@ -66,9 +66,6 @@ A jump is represented by two consecutive entries with the same time:
 Between stored points, values are interpolated linearly. Evaluating a trajectory
 at a jump time returns the value after the jump.
 
-Ersetze den Abschnitt **Project Structure** im README durch:
-
-````markdown
 ## Project Structure
 
 ```text
