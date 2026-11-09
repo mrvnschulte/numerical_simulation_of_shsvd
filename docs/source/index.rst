@@ -1,23 +1,20 @@
-.. Numerical Simulation of SHSVD documentation master file, created by
-   sphinx-quickstart on Mon Sep 15 16:21:43 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Numerical Simulation of SHSVD
+=============================
 
-Numerical Simulation of SHSVD documentation
-===========================================
-
-This is a documentation.
-
+Tools for representing functions of variable dimension and numerically
+simulating deterministic and stochastic hybrid systems.
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Contents:
+   :maxdepth: 2
+   :caption: Functions and Statistics
 
-.. rubric:: Modules
+   Function of Variable Dimension <api/numerical_simulation_of_shsvd.function_of_variable_dimension>
+   Statistics of Functions <api/numerical_simulation_of_shsvd.stats_functions_of_variable_dimension>
 
-.. autosummary::
-   :toctree: generated
-   :template: custom-module-template.rst
-   :recursive:
+.. toctree::
+   :maxdepth: 2
+   :caption: Solvers
 
-   numerical_simulation_of_shsvd
+   Deterministic Solver <api/numerical_simulation_of_shsvd.solve_hsvd>
+   Stochastic Solver <api/numerical_simulation_of_shsvd.solve_shsvd>
+   Single-Trajectory Stochastic Solver <api/numerical_simulation_of_shsvd.solve_shsvd_single_run>

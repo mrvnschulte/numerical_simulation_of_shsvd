@@ -3,43 +3,72 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import sys
 import os
-sys.path.insert(0, os.path.abspath('../../'))
+import sys
+
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Numerical Simulation of SHSVD'
-copyright = '2025, Marvin Schulte'
+copyright = '2026, Marvin Schulte'
 author = 'Marvin Schulte'
-release = '0.1'
+
+version = '0.2.0'
+release = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-       'sphinx.ext.autodoc',
-       'sphinx.ext.napoleon',
-       'sphinx.ext.autosummary',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autosummary",
 ]
+
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
 
 autosummary_generate = True
 
 autodoc_default_options = {
     "members": True,
     "undoc-members": False,
-    "private-members": False,
+    "show-inheritance": True,
 }
 
+autodoc_typehints = "description"
 
-templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**/__pycache__/**",
+    "**/.git/**",
+]
 
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
-html_static_path = ['_static']
+html_theme = "alabaster"
+html_static_path = ["_static"]
+html_logo = "_static/logo.png"
+html_theme_options = {
+    "fixed_sidebar": True,
+    "sidebar_collapse": True,
+    "github_user": "mrvnschulte",
+    "github_repo": "numerical_simulation_of_shsvd",
+    "github_button": True,
+}
+html_sidebars = {
+    "**": [
+        "about.html",
+        "navigation.html",
+        "relations.html",
+        "searchbox.html",
+        "donate.html",
+    ]
+}

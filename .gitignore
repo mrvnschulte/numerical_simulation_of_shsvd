@@ -1,5 +1,5 @@
 __pycache__/
 *.jpg
-build/*
+build/
 numerical_simulation_of_shsvd.egg-info/*
 plots/

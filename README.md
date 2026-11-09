@@ -1,3 +1,12 @@
+[![Tests](https://github.com/mrvnschulte/numerical_simulation_of_shsvd/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/mrvnschulte/numerical_simulation_of_shsvd/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/mrvnschulte/cross_immunity_model/branch/master/graph/badge.svg)](https://codecov.io/gh/mrvnschulte/numerical_simulation_of_shsvd)
+[![Documentation](https://img.shields.io/badge/documentation-GitHub%20Pages-blue)](https://mrvnschulte.github.io/numerical_simulation_of_shsvd/)
+
+<p align="center">
+  <img src="docs/source/_static/logo.png" alt="Numerical Simulation of SHSVD logo" width="180">
+</p>
+
+
 # Numerical Simulation of SHSVD
 
 Numerical tools for simulating and analysing **stochastic hybrid systems of variable dimension**.
@@ -38,6 +47,12 @@ Development dependencies:
 
 - pytest >= 7
 - pytest-cov
+
+## Documentation
+
+The API documentation is available at:
+
+[https://mrvnschulte.github.io/numerical_simulation_of_shsvd/](https://mrvnschulte.github.io/numerical_simulation_of_shsvd/)
 
 ## Model Description
 
@@ -352,13 +367,17 @@ corresponding module docstrings.
 
 ## Citation
 
-A citation will be added when available.
+If you use this software in your research, please cite:
+
+[Citation will be added upon publication]
 
 ## License
 
-A license has not yet been specified.
+This project is licensed under the [BSD 3-Clause License](LICENSE).
 
 ## Author
 
-Marvin Schulte —
-[marvin.schulte@itwm.fraunhofer.de](mailto:marvin.schulte@itwm.fraunhofer.de)
+Marvin Schulte - [marvin.schulte@itwm.fraunhofer.de](mailto:marvin.schulte@itwm.fraunhofer.de)
+
+Department Flow Processes, Division Processes and Materials, Fraunhofer Institute for Industrial Mathematics ITWM
+Department of Mathematics, RPTU University of Kaiserslautern-Landau
