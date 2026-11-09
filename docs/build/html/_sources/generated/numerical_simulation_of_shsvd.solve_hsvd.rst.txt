@@ -1,6 +1,0 @@
-numerical\_simulation\_of\_shsvd.solve\_hsvd
-============================================
-
-.. automodule:: numerical_simulation_of_shsvd.solve_hsvd
-
-   
