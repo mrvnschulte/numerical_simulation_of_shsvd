@@ -807,200 +807,254 @@ class FunctionOfVariableDimension:
         grid: bool = False,
         show_jump_times: bool = False,
         show_dimension_jump_times: bool = False,
+        labels_by_dimension: dict[int, list[str]] | None = None,
+        colors_by_dimension: dict[int, list[str]] | None = None,
     ) -> plt.Figure | list[plt.Figure]:
         """
-        Plots the coordinates of the function over time.
+        Plot the coordinates of the function over time.
+
+        Coordinate labels and colors can be specified separately for each
+        state dimension. Use the same label and color in different dimensions
+        to identify a coordinate whose index changes after a dimension jump.
 
         Parameters
         ----------
         title : str, optional
-            Plot title. The default is 'Plot of the coordinates'.
+            Title of the combined plot. The default is
+            "Plot of the coordinates".
         legend : bool, optional
             If True, show a legend. The default is True.
         labels : list of str or None, optional
-            Coordinate labels. If None or empty, labels are generated
-            automatically. The default is None.
+            Default coordinate labels, ordered by coordinate index. The list
+            must contain at least as many entries as the maximum state dimension.
+            If None or empty, labels are generated automatically. These labels
+            are used for dimensions not present in labels_by_dimension.
         xlabel : str, optional
-            Label for the x-axis. The default is 'Time'.
+            Label of the horizontal axis. The default is "Time".
         ylabel : str, optional
-            Label for the y-axis. The default is 'Value'.
+            Label of the vertical axis. The default is "Value".
         separate_plots : bool, optional
-            If True, also create a separate figure for each coordinate and
-            return those figures. The default is False.
+            If True, also create one figure per distinct coordinate label and
+            return those figures instead of the combined figure. The default
+            is False.
         sharex : bool, optional
-            If True, apply the combined plot's x-limits to separate figures.
-            The default is True.
+            If True, apply the combined plot's horizontal limits to the
+            separate plots. The default is True.
         sharey : bool, optional
-            If True, apply the combined plot's y-limits to separate figures.
-            The default is True.
+            If True, apply the combined plot's vertical limits to the
+            separate plots. The default is True.
         grid : bool, optional
-            If True, show grid lines. The default is False.
+            If True, display grid lines. The default is False.
         show_jump_times : bool, optional
-            If True, mark jump times. The default is False.
+            If True, mark all jump times with red dashed lines. The default
+            is False.
         show_dimension_jump_times : bool, optional
-            If True, mark dimension jump times. The default is False.
+            If True, mark dimension jump times with green dashed lines.
+            A dimension jump is also marked in red when show_jump_times is
+            True. The default is False.
+        labels_by_dimension : dict of int to list of str or None, optional
+            Coordinate labels for selected state dimensions. Each dictionary
+            key is a state dimension, and the corresponding list must contain
+            exactly that many labels in state-vector order. Equal labels across
+            dimensions share one legend entry and one separate plot.
+        colors_by_dimension : dict of int to list of str or None, optional
+            Coordinate colors for selected state dimensions. Each dictionary
+            key is a state dimension, and the corresponding list must contain
+            exactly that many Matplotlib-compatible colors in state-vector
+            order. Dimensions not present in the dictionary use the default
+            Matplotlib color cycle.
 
         Returns
         -------
         fig : plt.Figure or list of plt.Figure
-            Combined figure, or the coordinate figures if separate_plots is
-            True.
+            The combined figure, or the list of separate coordinate figures
+            if separate_plots is True. The combined figure is also created
+            when separate plots are requested.
+
+        Raises
+        ------
+        ValueError
+            If the function is empty, the default labels list is too short,
+            or a dimension-specific labels or colors list has the wrong length.
 
         Notes
         -----
+        Coordinates are drawn separately on either side of a dimension jump;
+        no line is drawn across the jump. Labels are used to identify the
+        same coordinate across dimensions. For consistent visual appearance,
+        assign the same color to equal labels in every dimension.
+
         The method calls matplotlib.pyplot.show().
         """
-        # Create figures
-        fig = plt.figure()
-        dimension_jump_times, dimension_jump_indices = (
-            self.dimension_jump_times(return_index=True)
-        )
+        if len(self.values) == 0:
+            raise ValueError("Cannot plot an empty function.")
+
         dimensions = self.dimension()
         max_dimension = max(dimensions)
-        prev_index = 0
 
-        if not labels:
-            labels = [f"Coordinate {i+1}" for i in range(max_dimension)]
+        # Prepare default labels for dimensions without explicit labels.
+        if labels is None or len(labels) == 0:
+            labels = [f"Coordinate {i + 1}" for i in range(max_dimension)]
+        elif len(labels) < max_dimension:
+            raise ValueError(
+                "labels must contain at least as many entries as the "
+                "maximum state dimension."
+            )
 
-        if separate_plots:
-            figures = []
-            for i in range(max_dimension):
-                figures.append(plt.figure())
-
-        # Plot the function iteratively between all dimension jump times
-        for index in dimension_jump_indices:
-            plt.figure(fig)
-            plt.gca().set_prop_cycle(None)
-            current_dimension = dimensions[prev_index]
-            if current_dimension == max_dimension:
-                lines = plt.plot(
-                    self.times[prev_index : index + 1],
-                    self.values[prev_index : index + 1],
-                )
-            else:
-                plt.plot(
-                    self.times[prev_index : index + 1],
-                    self.values[prev_index : index + 1],
-                )
-
-            if separate_plots:
-                for i in range(current_dimension):
-                    plt.figure(figures[i])
-                    plt.gca().set_prop_cycle(None)
-                    values = [
-                        value[i]
-                        for value in self.values[prev_index : index + 1]
-                    ]
-                    plt.plot(self.times[prev_index : index + 1], values)
-
-            prev_index = index + 1
-
-        plt.figure(fig)
-        plt.gca().set_prop_cycle(None)
-        current_dimension = dimensions[prev_index]
-        if current_dimension == max_dimension:
-            lines = plt.plot(self.times[prev_index:], self.values[prev_index:])
-        else:
-            plt.plot(self.times[prev_index:], self.values[prev_index:])
-
-        # Add specified design objects
-        if title:
-            plt.title(title)
-        if legend:
-            plt.legend(lines, labels)
-        if xlabel:
-            plt.xlabel(xlabel)
-        if ylabel:
-            plt.ylabel(ylabel)
-        if grid:
-            plt.grid()
-
-        # Plot vertical lines for (dimension) jump times, if desired
-        if show_jump_times:
-            jump_times = self.jump_times()
-            ylim = plt.ylim()
-            vlines = plt.vlines(jump_times, ylim[0], ylim[1], "red", "--")
-            plt.ylim(ylim)
-            if legend:
-                plt.legend(lines + [vlines], labels + ["Jump times"])
-
-        if show_dimension_jump_times:
-            jump_times = self.dimension_jump_times()
-            ylim = plt.ylim()
-            dvlines = plt.vlines(jump_times, ylim[0], ylim[1], "green", "--")
-            plt.ylim(ylim)
-            if legend:
-                if show_jump_times:
-                    plt.legend(
-                        lines + [vlines, dvlines],
-                        labels
-                        + ["Non-dimension jump times", "Dimension jump times"],
-                    )
-                else:
-                    plt.legend(
-                        lines + [dvlines], labels + ["Dimension jump times"]
-                    )
-
-        # Add design objects to separate coordinate plots, if desired
-        if separate_plots and (
-            sharex or sharey or title or grid or show_jump_times
+        # Validate the dimension-specific lists.
+        for mapping, name in (
+            (labels_by_dimension, "labels_by_dimension"),
+            (colors_by_dimension, "colors_by_dimension"),
         ):
-            xlim = plt.xlim()
-            ylim = plt.ylim()
-            for i in range(max_dimension):
-                plt.figure(figures[i])
-                if title:
-                    plt.title(f"{labels[i]} plot")
-                if grid:
-                    plt.grid()
-                if sharex:
-                    plt.xlim(xlim)
-                if sharey:
-                    plt.ylim(ylim)
-                if show_jump_times:
-                    jump_times = self.jump_times()
-                    ylim = plt.ylim()
-                    vlines = plt.vlines(
-                        jump_times, ylim[0], ylim[1], "red", "--"
-                    )
-                    plt.ylim(ylim)
-                    if legend:
-                        plt.legend(lines + [vlines], labels + ["Jump times"])
-                if show_dimension_jump_times:
-                    jump_times = self.dimension_jump_times()
-                    ylim = plt.ylim()
-                    dvlines = plt.vlines(
-                        jump_times, ylim[0], ylim[1], "green", "--"
-                    )
-                    plt.ylim(ylim)
-                    if legend:
-                        if show_jump_times:
-                            plt.legend(
-                                lines + [vlines, dvlines],
-                                labels
-                                + [
-                                    "Non-dimension jump times",
-                                    "Dimension jump times",
-                                ],
-                            )
-                        else:
-                            plt.legend(
-                                lines + [dvlines],
-                                labels + ["Dimension jump times"],
-                            )
+            if mapping is not None:
+                for dimension, entries in mapping.items():
+                    if len(entries) != dimension:
+                        raise ValueError(
+                            f"{name}[{dimension}] must contain exactly "
+                            f"{dimension} entries."
+                        )
 
-        # Plot dimension coordinates after last jump in separate plot
-        if separate_plots:
+        default_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        # Create the combined plot and keep one legend handle per label.
+        fig, ax = plt.subplots()
+        legend_lines = {}
+
+        # Separate figures are grouped by label rather than coordinate index.
+        figures = {}
+        separate_axes = {}
+
+        _, dimension_jump_indices = self.dimension_jump_times(
+            return_index=True
+        )
+
+        # Each segment contains states of one dimension. Both sides of a
+        # dimension jump are plotted in their respective segments.
+        segment_starts = [0] + [index + 1 for index in dimension_jump_indices]
+        segment_ends = [index + 1 for index in dimension_jump_indices]
+        segment_ends.append(len(self.values))
+
+        for start, end in zip(segment_starts, segment_ends):
+            current_dimension = dimensions[start]
+
+            if (
+                labels_by_dimension is not None
+                and current_dimension in labels_by_dimension
+            ):
+                current_labels = labels_by_dimension[current_dimension]
+            else:
+                current_labels = labels[:current_dimension]
+
+            if (
+                colors_by_dimension is not None
+                and current_dimension in colors_by_dimension
+            ):
+                current_colors = colors_by_dimension[current_dimension]
+            else:
+                current_colors = [
+                    default_colors[i % len(default_colors)]
+                    for i in range(current_dimension)
+                ]
+
+            times = self.times[start:end]
+            values = np.asarray(self.values[start:end])
+
             for i in range(current_dimension):
-                plt.figure(figures[i])
-                plt.gca().set_prop_cycle(None)
-                values = [value[i] for value in self.values[prev_index:]]
-                plt.plot(self.times[prev_index:], values)
+                label = current_labels[i]
+                color = current_colors[i]
+
+                # Draw one line per coordinate to assign its color explicitly.
+                (line,) = ax.plot(times, values[:, i], color=color)
+
+                if label not in legend_lines:
+                    legend_lines[label] = line
+
+                if separate_plots:
+                    if label not in figures:
+                        figures[label], separate_axes[label] = plt.subplots()
+
+                    separate_axes[label].plot(times, values[:, i], color=color)
+
+        # Add titles, axis labels, and grid to the combined plot.
+        if title:
+            ax.set_title(title)
+        if xlabel:
+            ax.set_xlabel(xlabel)
+        if ylabel:
+            ax.set_ylabel(ylabel)
+        if grid:
+            ax.grid()
+
+        # Add markers without changing the existing vertical axis limits.
+        def add_jump_markers(plot_ax):
+            marker_handles = []
+            marker_labels = []
+            ylim = plot_ax.get_ylim()
+
+            if show_jump_times:
+                jump_times = self.jump_times()
+                if len(jump_times) > 0:
+                    lines = plot_ax.vlines(
+                        jump_times,
+                        ylim[0],
+                        ylim[1],
+                        colors="red",
+                        linestyles="--",
+                    )
+                    marker_handles.append(lines)
+                    marker_labels.append("Jump times")
+
+            if show_dimension_jump_times:
+                jump_times = self.dimension_jump_times()
+                if len(jump_times) > 0:
+                    lines = plot_ax.vlines(
+                        jump_times,
+                        ylim[0],
+                        ylim[1],
+                        colors="green",
+                        linestyles="--",
+                    )
+                    marker_handles.append(lines)
+                    marker_labels.append("Dimension jump times")
+
+            plot_ax.set_ylim(ylim)
+            return marker_handles, marker_labels
+
+        marker_handles, marker_labels = add_jump_markers(ax)
+
+        if legend:
+            ax.legend(
+                list(legend_lines.values()) + marker_handles,
+                list(legend_lines.keys()) + marker_labels,
+            )
+
+        # Configure each separate figure after all its segments have been drawn.
+        if separate_plots:
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+
+            for label, separate_ax in separate_axes.items():
+                if title:
+                    separate_ax.set_title(f"{label} plot")
+                if xlabel:
+                    separate_ax.set_xlabel(xlabel)
+                if ylabel:
+                    separate_ax.set_ylabel(ylabel)
+                if grid:
+                    separate_ax.grid()
+                if sharex:
+                    separate_ax.set_xlim(xlim)
+                if sharey:
+                    separate_ax.set_ylim(ylim)
+
+                marker_handles, marker_labels = add_jump_markers(separate_ax)
+                if legend and marker_handles:
+                    separate_ax.legend(marker_handles, marker_labels)
 
         plt.show()
 
         if separate_plots:
-            return figures
+            return list(figures.values())
         return fig
 
     def plot_norm(

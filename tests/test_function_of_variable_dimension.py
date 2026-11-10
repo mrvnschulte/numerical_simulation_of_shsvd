@@ -745,6 +745,153 @@ class TestPlotCoordinates:
         plt.close("all")
 
 
+class TestPlotCoordinatesDimensionStyles:
+    @pytest.fixture(autouse=True)
+    def plotting_setup(self):
+        """Suppress interactive windows and close figures after each test."""
+        with patch("matplotlib.pyplot.show"):
+            yield
+        plt.close("all")
+
+    def test_moving_coordinate_uses_same_color_and_label(self, with_dim_jump):
+        """A coordinate may change its index while keeping its identity."""
+        fig = with_dim_jump.plot_coordinates(
+            labels_by_dimension={
+                2: ["x", "n"],
+                3: ["x", "y", "n"],
+            },
+            colors_by_dimension={
+                2: ["blue", "black"],
+                3: ["blue", "green", "black"],
+            },
+        )
+
+        ax = fig.axes[0]
+        lines = ax.get_lines()
+
+        # Plot order: x, n before the jump; x, y, n after the jump.
+        assert len(lines) == 5
+        assert lines[1].get_color() == "black"
+        assert lines[4].get_color() == "black"
+
+        np.testing.assert_array_equal(lines[1].get_xdata(), [0.0, 1.0])
+        np.testing.assert_array_equal(lines[1].get_ydata(), [2, 4])
+        np.testing.assert_array_equal(lines[4].get_xdata(), [1.0, 2.0])
+        np.testing.assert_array_equal(lines[4].get_ydata(), [7, 10])
+
+        legend_texts = [
+            text.get_text() for text in ax.get_legend().get_texts()
+        ]
+        assert legend_texts == ["x", "n", "y"]
+        assert legend_texts.count("n") == 1
+
+    def test_dimension_labels_override_default_labels(self, with_dim_jump):
+        """Dimension-specific labels take precedence over default labels."""
+        fig = with_dim_jump.plot_coordinates(
+            labels=["default_0", "default_1", "default_2"],
+            labels_by_dimension={2: ["x", "n"]},
+        )
+
+        legend_texts = [
+            text.get_text() for text in fig.axes[0].get_legend().get_texts()
+        ]
+
+        # Dimension 2 uses explicit labels; dimension 3 uses the fallback.
+        assert legend_texts == [
+            "x",
+            "n",
+            "default_0",
+            "default_1",
+            "default_2",
+        ]
+
+    def test_missing_colors_use_default_cycle(self, with_dim_jump):
+        """Unspecified dimensions use the Matplotlib color cycle."""
+        fig = with_dim_jump.plot_coordinates(
+            colors_by_dimension={2: ["red", "black"]},
+        )
+
+        lines = fig.axes[0].get_lines()
+        default_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        assert lines[0].get_color() == "red"
+        assert lines[1].get_color() == "black"
+        assert lines[2].get_color() == default_colors[0]
+        assert lines[3].get_color() == default_colors[1]
+
+    def test_separate_plots_group_segments_by_label(self, with_dim_jump):
+        """A moving coordinate is drawn in one separate figure."""
+        figures = with_dim_jump.plot_coordinates(
+            separate_plots=True,
+            labels_by_dimension={
+                2: ["x", "n"],
+                3: ["x", "y", "n"],
+            },
+            colors_by_dimension={
+                2: ["blue", "black"],
+                3: ["blue", "green", "black"],
+            },
+        )
+
+        assert len(figures) == 3
+
+        n_figure = next(
+            fig for fig in figures if fig.axes[0].get_title() == "n plot"
+        )
+        n_lines = n_figure.axes[0].get_lines()
+
+        assert len(n_lines) == 2
+        assert all(line.get_color() == "black" for line in n_lines)
+        np.testing.assert_array_equal(n_lines[0].get_ydata(), [2, 4])
+        np.testing.assert_array_equal(n_lines[1].get_ydata(), [7, 10])
+
+    @pytest.mark.parametrize(
+        "kwargs, expected_name",
+        [
+            ({"labels_by_dimension": {2: ["x"]}}, "labels_by_dimension"),
+            ({"labels_by_dimension": {3: ["x", "y"]}}, "labels_by_dimension"),
+            ({"colors_by_dimension": {2: ["black"]}}, "colors_by_dimension"),
+            (
+                {"colors_by_dimension": {3: ["red", "green"]}},
+                "colors_by_dimension",
+            ),
+        ],
+    )
+    def test_invalid_dimension_list_length(
+        self, with_dim_jump, kwargs, expected_name
+    ):
+        """Dimension-specific lists must match their dictionary key."""
+        with pytest.raises(ValueError, match=expected_name):
+            with_dim_jump.plot_coordinates(**kwargs)
+
+    def test_default_labels_too_short_raises(self, with_dim_jump):
+        """The default labels list must cover the maximum dimension."""
+        with pytest.raises(ValueError, match="labels"):
+            with_dim_jump.plot_coordinates(labels=["x", "n"])
+
+    def test_empty_function_raises(self, empty):
+        """Plotting an empty function raises a clear error."""
+        with pytest.raises(ValueError, match="empty"):
+            empty.plot_coordinates()
+
+    def test_jump_markers_have_distinct_legend_entries(self, with_dim_jump):
+        """Both kinds of jump markers are included in the legend."""
+        fig = with_dim_jump.plot_coordinates(
+            labels_by_dimension={2: ["x", "n"], 3: ["x", "y", "n"]},
+            show_jump_times=True,
+            show_dimension_jump_times=True,
+        )
+
+        ax = fig.axes[0]
+        legend_texts = [
+            text.get_text() for text in ax.get_legend().get_texts()
+        ]
+
+        assert "Jump times" in legend_texts
+        assert "Dimension jump times" in legend_texts
+        assert len(ax.collections) == 2
+
+
 # ---------------------------------------------------------------------------
 # plot_norm
 # ---------------------------------------------------------------------------
